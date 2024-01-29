@@ -18,7 +18,10 @@ import com.rahman.arctic.shard.exceptions.ResourceErrorException;
 import com.rahman.arctic.shard.exceptions.ResourceTimeoutException;
 import com.rahman.arctic.shard.objects.ArcticHost;
 import com.rahman.arctic.shard.objects.ArcticNetwork;
+import com.rahman.arctic.shard.objects.ArcticRouter;
+import com.rahman.arctic.shard.objects.ArcticSecurityGroup;
 import com.rahman.arctic.shard.objects.ArcticTask;
+import com.rahman.arctic.shard.objects.ArcticVolume;
 import com.rahman.arctic.shard.shards.ShardProviderTmpl;
 import com.rahman.arctic.shard.shards.Waiter;
 
@@ -59,9 +62,13 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 	@SuppressWarnings("unchecked")
 	@Override
 	protected ArcticTask<OSClientV3, Server> buildHost(ArcticHost ah) {
+		// Create the lists that will hold the dependencies needed further into the method
 		List<ArcticTask<OSClientV3, Volume>> volumes = new ArrayList<>();
 		List<ArcticTask<OSClientV3, Network>> networks = new ArrayList<>();
 		List<ArcticTask<OSClientV3, ?>> depends = new ArrayList<>();
+		
+		// Grab all networks and volumes from ArcticHost and add
+		// 		them into the lists above
 		ah.getNetworks().forEach(e -> {
 			networks.add((ArcticTask<OSClientV3, Network>) getNetworkTasks().get(e));
 			depends.add(getNetworkTasks().get(e));
@@ -72,7 +79,10 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 			depends.add(getVolumeTasks().get(e));
 		});
 		
-		ArcticTask<OSClientV3, Server> server = new ArcticTask<OSClientV3, Server>(10, depends) {
+		// Create the ArcticTask<Client, Resource>
+		ArcticTask<OSClientV3, Server> server = new ArcticTask<>(10, depends) {
+			
+			// Actual action of building the Server following OSClientV3 Library
 			public Server action() {
 				ServerCreateBuilder scb = Builders.server();
 				scb.name(ah.getName());
@@ -96,6 +106,7 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 				return s;
 			}
 			
+			// Use the OpenStackWaiter class to wait or error out the building of the Server
 			public void waitMethod(Server s) {
 				Waiter<OSClientV3, Server> serverWaiter = OpenStackWaiter.waitForInstanceAvailable();
 				try {
@@ -108,12 +119,27 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 			}
 		};
 		
+		// Return the ArcticTask
 		return server;
 	}
 	
 	@Override
 	protected ArcticTask<OSClientV3, Network> buildNetwork(ArcticNetwork an) {
-		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	protected ArcticTask<OSClientV3, ?> buildSecurityGroup(ArcticSecurityGroup asg) {
+		return null;
+	}
+
+	@Override
+	protected ArcticTask<OSClientV3, ?> buildRouter(ArcticRouter ar) {
+		return null;
+	}
+
+	@Override
+	protected ArcticTask<OSClientV3, ?> buildVolume(ArcticVolume av) {
 		return null;
 	}
 

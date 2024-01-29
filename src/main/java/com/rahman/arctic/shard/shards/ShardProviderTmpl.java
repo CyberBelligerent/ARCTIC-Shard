@@ -8,7 +8,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.rahman.arctic.shard.ShardManager;
 import com.rahman.arctic.shard.objects.ArcticHost;
 import com.rahman.arctic.shard.objects.ArcticNetwork;
+import com.rahman.arctic.shard.objects.ArcticRouter;
+import com.rahman.arctic.shard.objects.ArcticSecurityGroup;
 import com.rahman.arctic.shard.objects.ArcticTask;
+import com.rahman.arctic.shard.objects.ArcticVolume;
 import com.rahman.arctic.shard.util.ProfileProperties;
 
 import lombok.Getter;
@@ -53,8 +56,23 @@ public abstract class ShardProviderTmpl<T> {
 		networkTasks.put(an.getName(), buildNetwork(an));
 	}
 	
+	public void createSecurityGroup(ArcticSecurityGroup asg) {
+		securityGroupTasks.put(asg.getName(), buildSecurityGroup(asg));
+	}
+	
+	public void createRouter(ArcticRouter ar) {
+		routerTasks.put(ar.getName(), buildRouter(ar));
+	}
+	
+	public void createVolume(ArcticVolume av) {
+		volumeTasks.put(av.getName(), buildVolume(av));
+	}
+	
 	protected abstract ArcticTask<T,?> buildHost(ArcticHost ah);
 	protected abstract ArcticTask<T,?> buildNetwork(ArcticNetwork an);
+	protected abstract ArcticTask<T,?> buildSecurityGroup(ArcticSecurityGroup asg);
+	protected abstract ArcticTask<T,?> buildRouter(ArcticRouter ar);
+	protected abstract ArcticTask<T,?> buildVolume(ArcticVolume av);
 	
 	private ProfileProperties loadSettings(String domain) {
 		return sManager.getShardProperties().get(domain);

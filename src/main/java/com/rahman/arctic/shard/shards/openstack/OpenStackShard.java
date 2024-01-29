@@ -1,4 +1,4 @@
-package com.rahman.arctic.shard.shards.providers;
+package com.rahman.arctic.shard.shards.openstack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,10 +14,13 @@ import org.openstack4j.model.network.Network;
 import org.openstack4j.model.storage.block.Volume;
 import org.openstack4j.openstack.OSFactory;
 
+import com.rahman.arctic.shard.exceptions.ResourceErrorException;
+import com.rahman.arctic.shard.exceptions.ResourceTimeoutException;
 import com.rahman.arctic.shard.objects.ArcticHost;
 import com.rahman.arctic.shard.objects.ArcticNetwork;
 import com.rahman.arctic.shard.objects.ArcticTask;
 import com.rahman.arctic.shard.shards.ShardProviderTmpl;
+import com.rahman.arctic.shard.shards.Waiter;
 
 public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 
@@ -55,26 +58,26 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	protected ArcticTask<Server> buildHost(ArcticHost ah) {
-		List<ArcticTask<Volume>> volumes = new ArrayList<>();
-		List<ArcticTask<Network>> networks = new ArrayList<>();
-		List<ArcticTask<?>> depends = new ArrayList<>();
+	protected ArcticTask<OSClientV3, Server> buildHost(ArcticHost ah) {
+		List<ArcticTask<OSClientV3, Volume>> volumes = new ArrayList<>();
+		List<ArcticTask<OSClientV3, Network>> networks = new ArrayList<>();
+		List<ArcticTask<OSClientV3, ?>> depends = new ArrayList<>();
 		ah.getNetworks().forEach(e -> {
-			networks.add((ArcticTask<Network>) getNetworkTasks().get(e));
+			networks.add((ArcticTask<OSClientV3, Network>) getNetworkTasks().get(e));
 			depends.add(getNetworkTasks().get(e));
 		});
 		
 		ah.getVolumes().forEach(e -> {
-			volumes.add((ArcticTask<Volume>) getVolumeTasks().get(e));
+			volumes.add((ArcticTask<OSClientV3, Volume>) getVolumeTasks().get(e));
 			depends.add(getVolumeTasks().get(e));
 		});
 		
-		ArcticTask<Server> server = new ArcticTask<Server>(10, depends) {
-			public void action() {
+		ArcticTask<OSClientV3, Server> server = new ArcticTask<OSClientV3, Server>(10, depends) {
+			public Server action() {
 				ServerCreateBuilder scb = Builders.server();
 				scb.name(ah.getName());
 				scb.flavor(ah.getFlavor());
-				for(ArcticTask<Volume> vol : volumes) {
+				for(ArcticTask<OSClientV3, Volume> vol : volumes) {
 					scb.blockDevice(Builders.blockDeviceMapping()
 							.uuid(vol.getResource().getId())
 							.bootIndex(0)
@@ -84,14 +87,24 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 							.build());
 				}
 				List<String> networkIds = new ArrayList<>();
-				for(ArcticTask<Network> net : networks) {
+				for(ArcticTask<OSClientV3, Network> net : networks) {
 					Network netObj = net.getResource();
 					networkIds.add(netObj.getId());
 				}
 				scb.networks(networkIds);
 				Server s = OSFactory.clientFromToken(getClient().getToken()).compute().servers().boot(scb.build());
-				// TODO: Add a way to wait here
-				setResource(s);
+				return s;
+			}
+			
+			public void waitMethod(Server s) {
+				Waiter<OSClientV3, Server> serverWaiter = OpenStackWaiter.waitForInstanceAvailable();
+				try {
+					serverWaiter.waitUntilReady(OSFactory.clientFromToken(getClient().getToken()), ah.getRangeId(), s, 5000, 10);
+				} catch (ResourceTimeoutException e) {
+					e.printStackTrace();
+				} catch (ResourceErrorException e) {
+					e.printStackTrace();
+				}
 			}
 		};
 		
@@ -99,7 +112,7 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 	}
 	
 	@Override
-	protected ArcticTask<Network> buildNetwork(ArcticNetwork an) {
+	protected ArcticTask<OSClientV3, Network> buildNetwork(ArcticNetwork an) {
 		// TODO Auto-generated method stub
 		return null;
 	}

@@ -12,4 +12,5 @@ public class ArcticHost {
 	private String flavor;
 	private Set<String> networks = new HashSet<>();
 	private Set<String> volumes = new HashSet<>();
+	private String rangeId;
 }

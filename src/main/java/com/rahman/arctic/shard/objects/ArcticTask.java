@@ -13,22 +13,25 @@ import lombok.Setter;
  *
  * @param <R> Object to be obtained/created
  */
-public abstract class ArcticTask<R> implements Runnable {
+public abstract class ArcticTask<T, R> implements Runnable {
 	
 	@Getter
 	private final int priority;
 	
 	@Getter
-	private List<ArcticTask<?>> taskDependencies = new ArrayList<>();
+	private List<ArcticTask<T, ?>> taskDependencies = new ArrayList<>();
 	
 	@Getter
-	private List<ArcticTask<?>> children = new ArrayList<>();
+	private List<ArcticTask<T, ?>> children = new ArrayList<>();
 	
 	/**
 	 * Resource to be obtained/created from Type Generics
 	 */
 	@Getter @Setter
 	private R resource;
+	
+	@Getter @Setter
+	private T client;
 	
 //	@Getter
 //	private boolean completed = false;
@@ -54,7 +57,7 @@ public abstract class ArcticTask<R> implements Runnable {
 	 * @param priority Priority for queuing in ArcticCreator
 	 * @param depends List of ArcticTasks this threads needs to be finished first
 	 */
-	public ArcticTask(int priority, List<ArcticTask<?>> depends) {
+	public ArcticTask(int priority, List<ArcticTask<T, ?>> depends) {
 		this.priority = priority;
 		taskDependencies = depends;
 		cdl = new CountDownLatch(depends.size());
@@ -82,7 +85,8 @@ public abstract class ArcticTask<R> implements Runnable {
 	/**
 	 * Action for the thread to run
 	 */
-	public abstract void action();
+	public abstract R action();
+	public abstract void waitMethod(R resource);
 	
 	public void run() {
 		// Thread sleeping for smaller tasks or when a task is dependent on another task
@@ -92,7 +96,9 @@ public abstract class ArcticTask<R> implements Runnable {
 			e.printStackTrace();
 		}
 		
-		action();
+		R r = action();
+		waitMethod(r);
+		setResource(r);
 		notifyChildren();
 	}
 	

@@ -29,7 +29,7 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
   // Provider Code Here
 }
 ```
-In the above example, the OSClientV3 is the Client object imported from OpenStack4J. The Super method with the string argument tells SHardProviderTmpl where to pull your configuration settings for your specific shard. This is currently stored in a file located at <b>./.providers</b>.
+In the above example, the OSClientV3 is the Client object imported from OpenStack4J. The Super method with the String argument tells ShardProviderTmpl where to pull your configuration settings for your specific shard. This is currently stored in a file located at <b>./.providers</b>.
 
 The Settings look like:
 ```

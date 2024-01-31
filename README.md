@@ -5,7 +5,7 @@ Shard is the interface that connects Iceberg with the associated Cloud Provider 
 Creating a new provider connector can be tedious and time-consuming. It is recommended to know the providers Library/API before moving on.
 
 ### Defining the Provider
-First Step, is to create a class that extends <b>ShardProviderTmpl</b> and type the Client being provider.
+First Step, is to create a class that extends <b>ShardProviderTmpl</b> and type the Client being provided.
 
 <b>Example</b>
 ```java

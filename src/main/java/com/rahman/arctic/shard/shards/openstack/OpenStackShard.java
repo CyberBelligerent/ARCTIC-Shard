@@ -10,7 +10,14 @@ import org.openstack4j.model.compute.BDMDestType;
 import org.openstack4j.model.compute.BDMSourceType;
 import org.openstack4j.model.compute.Server;
 import org.openstack4j.model.compute.builder.ServerCreateBuilder;
+import org.openstack4j.model.network.AttachInterfaceType;
+import org.openstack4j.model.network.IPVersionType;
 import org.openstack4j.model.network.Network;
+import org.openstack4j.model.network.Router;
+import org.openstack4j.model.network.SecurityGroup;
+import org.openstack4j.model.network.SecurityGroupRule;
+import org.openstack4j.model.network.Subnet;
+import org.openstack4j.model.network.builder.RouterBuilder;
 import org.openstack4j.model.storage.block.Volume;
 import org.openstack4j.openstack.OSFactory;
 
@@ -20,6 +27,7 @@ import com.rahman.arctic.shard.objects.ArcticHost;
 import com.rahman.arctic.shard.objects.ArcticNetwork;
 import com.rahman.arctic.shard.objects.ArcticRouter;
 import com.rahman.arctic.shard.objects.ArcticSecurityGroup;
+import com.rahman.arctic.shard.objects.ArcticSecurityGroupRule;
 import com.rahman.arctic.shard.objects.ArcticTask;
 import com.rahman.arctic.shard.objects.ArcticVolume;
 import com.rahman.arctic.shard.shards.ShardProviderTmpl;
@@ -125,22 +133,166 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 	
 	@Override
 	protected ArcticTask<OSClientV3, Network> buildNetwork(ArcticNetwork an) {
-		return null;
+		ArcticTask<OSClientV3, Network> net =  new ArcticTask<>(0) {
+			public Network action() {
+				Network netObj = OSFactory.clientFromToken(getClient().getToken()).networking().network().create(Builders.network()
+						.name(an.getName())
+						.adminStateUp(true)
+						.build());
+				Waiter<OSClientV3, Network> netWaiter = OpenStackWaiter.waitForNetworkUp();
+				try {
+					netWaiter.waitUntilReady(OSFactory.clientFromToken(getClient().getToken()), an.getRangeId(), netObj, 3000, 10);
+				} catch (ResourceTimeoutException | ResourceErrorException e1) {
+					e1.printStackTrace();
+				}
+				Subnet s = getClient().networking().subnet().create(Builders.subnet()
+						.name(an.getName() + "-Subnet")
+						.networkId(netObj.getId())
+						.enableDHCP(true)
+						.addPool(an.getIpRangeStart(), an.getIpRangeEnd())
+						.ipVersion(IPVersionType.V4)
+						.cidr(an.getIpCidr())
+						.gateway(an.getIpGateway())
+						.build());
+				netObj.getSubnets().add(s.getId());
+				return netObj;
+//				setResource(netObj);
+			}
+
+			@Override
+			public void waitMethod(Network resource) {
+				// TODO: Fix this, in this setup, the wait needs to be done else where, maybe make subnets and networks
+					// Separate objects?
+				return;
+			}
+		};
+		
+		return net;
 	}
 
 	@Override
-	protected ArcticTask<OSClientV3, ?> buildSecurityGroup(ArcticSecurityGroup asg) {
-		return null;
+	protected ArcticTask<OSClientV3, SecurityGroup> buildSecurityGroup(ArcticSecurityGroup asg) {
+		ArcticTask<OSClientV3, SecurityGroup> secGroup = new ArcticTask<>(4) {
+			public SecurityGroup action() {
+				SecurityGroup sg = OSFactory.clientFromToken(getClient().getToken()).networking().securitygroup().create(Builders.securityGroup()
+						.name(asg.getName())
+						.description(asg.getDescription())
+						.build());
+//				setResource(sg);
+				return sg;
+			}
+
+			@Override
+			public void waitMethod(SecurityGroup resource) {
+				// TODO: Again, No Waiting Needed
+				return;
+			}
+		};
+		return secGroup;
+	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	protected ArcticTask<OSClientV3, Router> buildRouter(ArcticRouter ar) {
+		List<ArcticTask<OSClientV3, Network>> networks = new ArrayList<>();
+		List<ArcticTask<OSClientV3, ?>> depends = new ArrayList<>();
+		
+		ar.getConnectedNetworkNames().forEach(e -> {
+			networks.add((ArcticTask<OSClientV3, Network>) getNetworkTasks().get(e));
+			depends.add(getNetworkTasks().get(e));
+		});
+		
+		ArcticTask<OSClientV3, Router> router = new ArcticTask<>(1, depends) {
+			public Router action() {
+				OSClientV3 client = OSFactory.clientFromToken(getClient().getToken());
+				
+				RouterBuilder rb = Builders.router();
+				rb.adminStateUp(true);
+				rb.clearExternalGateway();
+				rb.name(ar.getName());
+				
+				Router r = client.networking().router().create(rb.build());
+				
+				OSFactory.clientFromToken(getClient().getToken()).networking().router().attachInterface(ar.getName(), null, ar.getName());
+				for(ArcticTask<OSClientV3, Network> net : networks) {
+					client.networking().router().attachInterface(r.getId(), AttachInterfaceType.SUBNET, net.getResource().getSubnets().get(0));
+				}
+				
+				return r;
+			}
+
+			@Override
+			public void waitMethod(Router resource) {
+				// TODO: NO wait is needed for this one... how do I make this better?
+				return;
+			}
+		};
+		
+		return router;
 	}
 
 	@Override
-	protected ArcticTask<OSClientV3, ?> buildRouter(ArcticRouter ar) {
-		return null;
+	protected ArcticTask<OSClientV3, Volume> buildVolume(ArcticVolume av) {
+		ArcticTask<OSClientV3, Volume> vol = new ArcticTask<>(2) {
+			public Volume action() {
+				Volume v = OSFactory.clientFromToken(getClient().getToken()).blockStorage().volumes().create(Builders.volume()
+						.name(av.getName())
+						.description(av.getDescription())
+						.size(av.getSize())
+						.imageRef(av.getImageId())
+						.bootable(av.isBootable())
+						.build());
+				return v;
+//				setResource(v);
+			}
+
+			@Override
+			public void waitMethod(Volume resource) {
+				Waiter<OSClientV3, Volume> waiter = OpenStackWaiter.waitForVolumeAvailable();
+				try {
+					waiter.waitUntilReady(OSFactory.clientFromToken(getClient().getToken()), av.getRangeId(), resource, 3000, 10);
+				} catch (ResourceTimeoutException e) {
+					e.printStackTrace();
+				} catch (ResourceErrorException e) {
+					e.printStackTrace();
+				}
+			}
+		};
+		return vol;
 	}
 
 	@Override
-	protected ArcticTask<OSClientV3, ?> buildVolume(ArcticVolume av) {
-		return null;
+	protected ArcticTask<OSClientV3, SecurityGroupRule> buildSecurityGroupRule(ArcticSecurityGroupRule asgr) {
+		@SuppressWarnings("unchecked")
+		ArcticTask<OSClientV3, SecurityGroup> group = (ArcticTask<OSClientV3, SecurityGroup>) getSecurityGroupTasks().get(asgr.getSecGroup());
+		
+		ArcticTask<OSClientV3, SecurityGroupRule> rule = new ArcticTask<>(5, List.of(group)) {
+			public SecurityGroupRule action() {
+				//String startMessage = String.format("Creating Security Rule: %s %s %s-%s", dir, protocol, String.valueOf(r1), String.valueOf(r2));
+				//IcebergViewer.sendConsoleBuildUpdate(re, new ConsoleMessage(startMessage));
+				SecurityGroupRule sgr = OSFactory.clientFromToken(getClient().getToken()).networking().securityrule().create(
+						Builders.securityGroupRule()
+						.securityGroupId(group.getResource().getId())
+						.direction(asgr.getDirection())
+						.ethertype(asgr.getEth())
+						.protocol(asgr.getProtocol())
+						.portRangeMin(asgr.getStartPortRange())
+						.portRangeMax(asgr.getEndPortRange())
+						.build()
+					);
+//				setResource(sgr);
+				//String endMessage = String.format("Security Rule Done: %s %s %s-%s", dir, protocol, String.valueOf(r1), String.valueOf(r2));
+				//IcebergViewer.sendConsoleBuildUpdate(re, new ConsoleMessage(endMessage));
+				return sgr;
+			}
+
+			@Override
+			public void waitMethod(SecurityGroupRule resource) {
+				// TODO: Again, No waiting needed
+				return;
+			}
+		};
+		return rule;
 	}
 
 }

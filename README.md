@@ -4,6 +4,8 @@ Shard is the interface that connects Iceberg with the associated Cloud Provider 
 ## Building A New Provider
 Creating a new provider connector can be tedious and time-consuming. It is recommended to know the providers Library/API before moving on.
 
+For the purposes of this README, all documentation and examples are using OpenStack. The documentation can be found at: https://openstack4j.github.io/
+
 ### Defining the Provider
 First Step, is to create a class that extends <b>ShardProviderTmpl</b> and type the Client being provided.
 

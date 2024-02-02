@@ -10,6 +10,7 @@ import com.rahman.arctic.shard.objects.ArcticHost;
 import com.rahman.arctic.shard.objects.ArcticNetwork;
 import com.rahman.arctic.shard.objects.ArcticRouter;
 import com.rahman.arctic.shard.objects.ArcticSecurityGroup;
+import com.rahman.arctic.shard.objects.ArcticSecurityGroupRule;
 import com.rahman.arctic.shard.objects.ArcticTask;
 import com.rahman.arctic.shard.objects.ArcticVolume;
 import com.rahman.arctic.shard.util.ProfileProperties;
@@ -37,6 +38,9 @@ public abstract class ShardProviderTmpl<T> {
 	private Map<String, ArcticTask<T,?>> securityGroupTasks = new HashMap<>();
 	
 	@Getter
+	private Map<String, ArcticTask<T, ?>> securityGroupRuleTasks = new HashMap<>();
+	
+	@Getter
 	private Map<String, ArcticTask<T,?>> routerTasks = new HashMap<>();
 	
 	@Getter
@@ -44,6 +48,7 @@ public abstract class ShardProviderTmpl<T> {
 	
 	public ShardProviderTmpl(String domain) {
 		properties = loadSettings(domain);
+		sManager.registerShard(domain, this);
 	}
 	
 	public abstract T createClient();
@@ -60,6 +65,10 @@ public abstract class ShardProviderTmpl<T> {
 		securityGroupTasks.put(asg.getName(), buildSecurityGroup(asg));
 	}
 	
+	public void createSecurityGroupRule(ArcticSecurityGroupRule asgr) {
+		securityGroupRuleTasks.put(asgr.getName(), buildSecurityGroupRule(asgr));
+	}
+	
 	public void createRouter(ArcticRouter ar) {
 		routerTasks.put(ar.getName(), buildRouter(ar));
 	}
@@ -71,6 +80,7 @@ public abstract class ShardProviderTmpl<T> {
 	protected abstract ArcticTask<T,?> buildHost(ArcticHost ah);
 	protected abstract ArcticTask<T,?> buildNetwork(ArcticNetwork an);
 	protected abstract ArcticTask<T,?> buildSecurityGroup(ArcticSecurityGroup asg);
+	protected abstract ArcticTask<T,?> buildSecurityGroupRule(ArcticSecurityGroupRule asgr);
 	protected abstract ArcticTask<T,?> buildRouter(ArcticRouter ar);
 	protected abstract ArcticTask<T,?> buildVolume(ArcticVolume av);
 	

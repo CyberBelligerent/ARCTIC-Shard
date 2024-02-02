@@ -4,6 +4,10 @@ import lombok.Data;
 
 @Data
 public class ArcticVolume {
-	public String name;
-	public String rangeId;
+	private String name;
+	private String rangeId;
+	private String description;
+	private int size;
+	private boolean bootable;
+	private String imageId;
 }

@@ -6,4 +6,5 @@ import lombok.Data;
 public class ArcticSecurityGroup {
 	private String name;
 	private String rangeId;
+	private String description;
 }

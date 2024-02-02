@@ -98,7 +98,7 @@ domain = Default
 <b>getProperties()</b> is built when extended <b>ShardProviderTmpl</b> and providing your configuration section string in the <b>super()</b> method.
 
 ### Arctic Objects
-ARCTIC comes pre-built with wrapper classes that will push information to your new provider connector class. The ARCTIC Object MAY have more information in it then you need to use to create the object for the specific provider. Make sure to read through all variables the Wrapper Object has.
+ARCTIC comes pre-built with wrapper classes that will push information to your new provider connector class. The ARCTIC Object MAY have more information in it than you need to use to create the object for the specific provider. Make sure to read through all variables the Wrapper Object has.
 
 Currently available Arctic Wrapper Objects:
 
@@ -119,11 +119,11 @@ public ArcticTask(int priority);
 public ArcticTask(int priority, List<ArcticTask<T, ?>> depends);
 ```
 
-When creating an ArcticTask, it is your job to ensure you know what needs to be built first. A lower numbers means it will be created first (0 is created before 1). The IcebergCreator class will automatically sort the ArcticTasks by priority when building. You will not need to worry about sorting.
+When creating an ArcticTask, it is your job to ensure you know what needs to be built first. A lower number means it will be created first (0 is created before 1). The IcebergCreator class will automatically sort the ArcticTasks by priority when building. You will not need to worry about sorting.
 
 Some objects require certain objects to be created <b>before</b> the object can be created. For example, an OpenStack instance needs to have the network and volumes made that you want to add to that host. Be sure you understand what objects are required when building the object.
 
-All resources can be obtain from the following methods inside of your class that extends <b>ShardProviderTmpl</b>
+All resources can be obtained from the following methods inside of your class that extends <b>ShardProviderTmpl</b>
 ```
 getNetworkTasks(); // Network Objects
 getInstanceTasks(); // Instance/Host Objects
@@ -220,4 +220,4 @@ protected ArcticTask<OSClientV3, Server> buildHost(ArcticHost ah) {
 }
 ```
 
-As you can see, it can be difficult to understand, and make, an ArcticTask. But its easier when you think about that <b>action</b> holds <b>JUST</b> making the item and <b>waitMethod</b> just holds the <b>while</b> loop to hold the thread until the resource is ready. The above waitMethod is fairly crazy, but looking into the <b>OpenStackWaiter</b> class, you'll see it's just a while loop method that checks every 10 seconds for 5000 seconds. (Lower timeInSeconds will be it errors out faster. Ensure you test this several times before attempting to merge a new provider in).
+As you can see, it can be difficult to understand, and make, an ArcticTask. But it's easier when you think about that <b>action</b> holds <b>JUST</b> making the item and <b>waitMethod</b> just holds the <b>while</b> loop to hold the thread until the resource is ready. The above waitMethod is fairly crazy, but looking into the <b>OpenStackWaiter</b> class, you'll see it's just a while loop method that checks every 10 seconds for 5000 seconds. (Lower timeInSeconds will error it out faster. Ensure you test this several times before attempting to merge a new provider in).

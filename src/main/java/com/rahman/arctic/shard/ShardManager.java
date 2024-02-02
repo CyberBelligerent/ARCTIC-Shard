@@ -10,6 +10,7 @@ import java.util.Scanner;
 
 import org.springframework.stereotype.Service;
 
+import com.rahman.arctic.shard.shards.ShardProviderTmpl;
 import com.rahman.arctic.shard.util.ProfileConfigReader;
 import com.rahman.arctic.shard.util.ProfileProperties;
 
@@ -20,6 +21,14 @@ public class ShardManager {
 
 	@Getter
 	private Map<String, ProfileProperties> shardProperties = new HashMap<>();
+	
+	@Getter
+	private Map<String, ShardProviderTmpl<?>> shards = new HashMap<>();
+	
+	public ShardProviderTmpl<?> getPrimaryShard() {
+		// TODO: Allow this to be switchable
+		return shards.get("openstack");
+	}
 	
 	public ShardManager(String f) {
 		File configFile = new File(f);
@@ -64,6 +73,10 @@ public class ShardManager {
 		}
 		
 		shardProperties = profiles;
+	}
+	
+	public void registerShard(String name, ShardProviderTmpl<?> shard) {
+		shards.put(name, shard);
 	}
 	
 }

@@ -6,7 +6,7 @@ import java.util.Set;
 import lombok.Data;
 
 @Data
-public class ArcticHost {
+public class ArcticHostSO {
 	private String ip;
 	private String name;
 	private String flavor;

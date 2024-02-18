@@ -5,7 +5,7 @@ import java.util.Set;
 import lombok.Data;
 
 @Data
-public class ArcticRouter {
+public class ArcticRouterSO {
 	private String name;
 	private String rangeId;
 	private Set<String> connectedNetworkNames;

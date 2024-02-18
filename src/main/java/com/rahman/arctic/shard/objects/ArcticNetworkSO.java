@@ -3,7 +3,7 @@ package com.rahman.arctic.shard.objects;
 import lombok.Data;
 
 @Data
-public class ArcticNetwork {
+public class ArcticNetworkSO {
 	private String name;
 	private String rangeId;
 	private String ipRangeStart;

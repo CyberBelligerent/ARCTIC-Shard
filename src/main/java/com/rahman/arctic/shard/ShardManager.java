@@ -33,7 +33,6 @@ public class ShardManager {
 	public ShardManager(String f) {
 		File configFile = new File(f);
 		if(configFile != null) {
-			System.out.println("Config file exists!");
 			if(!configFile.exists() || !configFile.isFile()) {
 				System.out.println("Config file not found. Please Create file: " + f + " next to the jar file");
 				System.exit(1);

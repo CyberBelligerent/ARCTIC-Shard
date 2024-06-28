@@ -21,13 +21,14 @@ import org.openstack4j.model.network.builder.RouterBuilder;
 import org.openstack4j.model.storage.block.Volume;
 import org.openstack4j.openstack.OSFactory;
 
+import com.rahman.arctic.shard.ShardManager;
 import com.rahman.arctic.shard.exceptions.ResourceErrorException;
 import com.rahman.arctic.shard.exceptions.ResourceTimeoutException;
 import com.rahman.arctic.shard.objects.ArcticHostSO;
 import com.rahman.arctic.shard.objects.ArcticNetworkSO;
 import com.rahman.arctic.shard.objects.ArcticRouterSO;
-import com.rahman.arctic.shard.objects.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.ArcticSecurityGroupRuleSO;
+import com.rahman.arctic.shard.objects.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.ArcticTask;
 import com.rahman.arctic.shard.objects.ArcticVolumeSO;
 import com.rahman.arctic.shard.shards.ShardProviderTmpl;
@@ -35,12 +36,15 @@ import com.rahman.arctic.shard.shards.Waiter;
 
 public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 
-	public OpenStackShard() {
-		super("openstack");
+	public OpenStackShard(ShardManager manager) {
+		super("openstack", manager);
 	}
 
 	@Override
 	public OSClientV3 createClient() {
+		System.out.println("Attempting to Create OpenStack Client...");
+		
+		System.out.println("Attempting to load properties...");
 		String endpoint = getProperties().getPropertyValue("endpoint");
 		String username = getProperties().getPropertyValue("username");
 		String password = getProperties().getPropertyValue("password");
@@ -58,11 +62,21 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 			domain = "Default";
 		}
 		
+		System.out.println("Connecting with the following options:");
+		System.out.println("\tEndpoint: " + endpoint);
+		System.out.println("\tUsername: " + username);
+		System.out.println("\tPassword: *****");
+		System.out.println("\tProjectID: " + projectId);
+		System.out.println("\tDomain: " + domain);
 		OSClientV3 mainOSC = OSFactory.builderV3()
 				.endpoint(endpoint)
 				.credentials(username, password, Identifier.byName(domain))
 				.scopeToProject(Identifier.byId(projectId))
 				.authenticate();
+		
+		if(mainOSC != null) {
+			System.out.println("OpenStack Client Successfully Loaded");
+		}
 		
 		return mainOSC;
 	}

@@ -3,14 +3,12 @@ package com.rahman.arctic.shard.shards;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
-
 import com.rahman.arctic.shard.ShardManager;
 import com.rahman.arctic.shard.objects.ArcticHostSO;
 import com.rahman.arctic.shard.objects.ArcticNetworkSO;
 import com.rahman.arctic.shard.objects.ArcticRouterSO;
-import com.rahman.arctic.shard.objects.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.ArcticSecurityGroupRuleSO;
+import com.rahman.arctic.shard.objects.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.ArcticTask;
 import com.rahman.arctic.shard.objects.ArcticVolumeSO;
 import com.rahman.arctic.shard.util.ProfileProperties;
@@ -18,8 +16,7 @@ import com.rahman.arctic.shard.util.ProfileProperties;
 import lombok.Getter;
 
 public abstract class ShardProviderTmpl<T> {
-	
-	@Autowired
+
 	private ShardManager sManager;
 	
 	@Getter
@@ -46,9 +43,17 @@ public abstract class ShardProviderTmpl<T> {
 	@Getter
 	private Map<String, ArcticTask<T,?>> volumeTasks = new HashMap<>();
 	
-	public ShardProviderTmpl(String domain) {
+	/**
+	 * Creates a new Shard as a connector for the Cloud Environment wanted
+	 * @param domain
+	 * @param manager
+	 */
+	public ShardProviderTmpl(String domain, ShardManager manager) {
+		sManager = manager;
+		
 		properties = loadSettings(domain);
 		sManager.registerShard(domain, this);
+		client = createClient();
 	}
 	
 	public abstract T createClient();

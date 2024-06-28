@@ -3,6 +3,8 @@ package com.rahman.arctic.shard;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -30,6 +32,10 @@ public class ShardManager {
 		return shards.get("openstack");
 	}
 	
+	/**
+	 * Creates Shard configurations for acceptable Shard Interfaces through Cloud Environments
+	 * @param f File of which to pull
+	 */
 	public ShardManager(String f) {
 		File configFile = new File(f);
 		if(configFile != null) {
@@ -45,10 +51,42 @@ public class ShardManager {
 				fis = new FileInputStream(configFile);
 				Map<String, Map<String, String>> properties = ProfileConfigReader.run(new Scanner(fis));
 				convertPropertiesToObject(properties);
-			} catch(IOException e) {
+				
+				for(String key : properties.keySet()) {
+					Map<String, String> mainProps = properties.get(key);
+					if(!mainProps.containsKey("class")) {
+						System.out.println("Unable to Locate Cloud Environment Shard Loader for: " + key + " ...");
+						continue;
+					}
+					
+					Class<?> clazz = Class.forName(mainProps.get("class"));
+					Constructor<?> constructor = clazz.getDeclaredConstructor(ShardManager.class);
+					
+					Object instance = constructor.newInstance(this);
+					System.out.println("Successfully created instance: " + instance);
+				}
+			} catch(IOException | ClassNotFoundException e) {
 				System.out.println("Unable to read config file, please delete and recreate.");
 				System.exit(1);
 				return;
+			} catch (InstantiationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IllegalAccessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IllegalArgumentException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InvocationTargetException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (NoSuchMethodException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (SecurityException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			} finally {
 				if(fis != null) {
 					try {
@@ -67,6 +105,9 @@ public class ShardManager {
 		Map<String, ProfileProperties> profiles = new HashMap<>();
 		for(Entry<String, Map<String, String>> entry : properties.entrySet()) {
 			String profileName = entry.getKey();
+			
+			System.out.println("Loading Profile: " + profileName);
+			
 			Map<String, String> props = entry.getValue();
 			profiles.put(profileName, new ProfileProperties(profileName, props));
 		}
@@ -75,6 +116,7 @@ public class ShardManager {
 	}
 	
 	public void registerShard(String name, ShardProviderTmpl<?> shard) {
+		System.out.println("Shard: " + name + " Registered");
 		shards.put(name, shard);
 	}
 	

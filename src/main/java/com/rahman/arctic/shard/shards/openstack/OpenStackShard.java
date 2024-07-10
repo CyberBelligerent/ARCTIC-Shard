@@ -2,14 +2,17 @@ package com.rahman.arctic.shard.shards.openstack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.openstack4j.api.Builders;
 import org.openstack4j.api.OSClient.OSClientV3;
 import org.openstack4j.model.common.Identifier;
 import org.openstack4j.model.compute.BDMDestType;
 import org.openstack4j.model.compute.BDMSourceType;
+import org.openstack4j.model.compute.Flavor;
 import org.openstack4j.model.compute.Server;
 import org.openstack4j.model.compute.builder.ServerCreateBuilder;
+import org.openstack4j.model.image.v2.Image;
 import org.openstack4j.model.network.AttachInterfaceType;
 import org.openstack4j.model.network.IPVersionType;
 import org.openstack4j.model.network.Network;
@@ -31,6 +34,8 @@ import com.rahman.arctic.shard.objects.ArcticSecurityGroupRuleSO;
 import com.rahman.arctic.shard.objects.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.ArcticTask;
 import com.rahman.arctic.shard.objects.ArcticVolumeSO;
+import com.rahman.arctic.shard.objects.providers.ProviderFlavor;
+import com.rahman.arctic.shard.objects.providers.ProviderImage;
 import com.rahman.arctic.shard.shards.ShardProviderTmpl;
 import com.rahman.arctic.shard.shards.Waiter;
 
@@ -307,6 +312,30 @@ public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 			}
 		};
 		return rule;
+	}
+
+	@Override
+	public CompletableFuture<List<ProviderImage>> obtainOS() {
+		return CompletableFuture.supplyAsync(() -> {
+            List<ProviderImage> images = new ArrayList<>();
+            List<? extends Image> osImages = OSFactory.clientFromToken(getClient().getToken()).imagesV2().list();
+            osImages.forEach(e -> {
+                images.add(new ProviderImage(e.getId(), e.getName()));
+            });
+            return images;
+        });
+	}
+
+	@Override
+	public CompletableFuture<List<ProviderFlavor>> obtainFlavors() {
+		return CompletableFuture.supplyAsync(() -> {
+            List<ProviderFlavor> images = new ArrayList<>();
+            List<? extends Flavor> osImages = OSFactory.clientFromToken(getClient().getToken()).compute().flavors().list();
+            osImages.forEach(e -> {
+                images.add(new ProviderFlavor(e.getId(), e.getName()));
+            });
+            return images;
+        });
 	}
 
 }

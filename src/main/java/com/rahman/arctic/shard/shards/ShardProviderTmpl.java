@@ -1,7 +1,9 @@
 package com.rahman.arctic.shard.shards;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import com.rahman.arctic.shard.ShardManager;
 import com.rahman.arctic.shard.objects.ArcticHostSO;
@@ -11,6 +13,8 @@ import com.rahman.arctic.shard.objects.ArcticSecurityGroupRuleSO;
 import com.rahman.arctic.shard.objects.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.ArcticTask;
 import com.rahman.arctic.shard.objects.ArcticVolumeSO;
+import com.rahman.arctic.shard.objects.providers.ProviderFlavor;
+import com.rahman.arctic.shard.objects.providers.ProviderImage;
 import com.rahman.arctic.shard.util.ProfileProperties;
 
 import lombok.Getter;
@@ -88,6 +92,8 @@ public abstract class ShardProviderTmpl<T> {
 	protected abstract ArcticTask<T,?> buildSecurityGroupRule(ArcticSecurityGroupRuleSO asgr);
 	protected abstract ArcticTask<T,?> buildRouter(ArcticRouterSO ar);
 	protected abstract ArcticTask<T,?> buildVolume(ArcticVolumeSO av);
+	public abstract CompletableFuture<List<ProviderImage>> obtainOS();
+	public abstract CompletableFuture<List<ProviderFlavor>> obtainFlavors();
 	
 	private ProfileProperties loadSettings(String domain) {
 		return sManager.getShardProperties().get(domain);

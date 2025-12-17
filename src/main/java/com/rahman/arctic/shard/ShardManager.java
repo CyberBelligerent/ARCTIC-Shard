@@ -40,22 +40,41 @@ public class ShardManager {
 	
 	private final ShardConfigurationService configurationService;
 
-	
-	public ShardProviderTmpl<?> getPrimaryShard() {
-		// TODO: Allow this to be switchable
-		return shards.get("openstack");
+	public void createSession(ShardProfile profile) {
+		ShardProviderTmpl<?> provider = shards.get(profile.getDomain());
+		if(provider == null) throw new ResourceNotFoundException("Unable to load domain");
+		ShardRunningContext<?> context = provider.createRunningContext(configurationService.getAllConfigurationsForProfile(profile.getId()));
+		
+		if(!context.validateConfiguration()) throw new ResourceNotFoundException("Configuration components missing");
+		
+		context.createClient();
+		runningShardProfiles.put(profile, context);
 	}
 	
-	/**
-	 * Creates Shard configurations for acceptable Shard Interfaces through Cloud Environments
-	 * @param f File of which to pull
-	 */
-	public ShardManager(String f) {
-		File configFile = new File(f);
-		if(configFile != null) {
-			if(!configFile.exists() || !configFile.isFile()) {
-				System.out.println("Config file not found. Please Create file: " + f + " next to the jar file");
-				System.exit(1);
+	public boolean performConnectionTest(ShardProfile profile) {
+		ShardProviderTmpl<?> provider = shards.get(profile.getDomain());
+		if(provider == null) return false;
+		ShardRunningContext<?> context = provider.createRunningContext(configurationService.getAllConfigurationsForProfile(profile.getId()));
+		
+		if(!context.validateConfiguration()) return false;
+		return context.performConnectionTest();
+	}
+	
+	public ShardRunningContext<?> getSession(ShardProfile profile) {
+		ShardRunningContext<?> context = runningShardProfiles.get(profile);
+		if(context == null) throw new ResourceNotFoundException("Unable to load running shard context");
+		return context;
+	}
+	
+	public CompletableFuture<?> createOneOffSession(ShardProfile profile, String key) {
+		ShardProviderTmpl<?> provider = shards.get(profile.getDomain());
+		if(provider == null) throw new ResourceNotFoundException("Unable to load domain");
+		ShardRunningContext<?> context = provider.createRunningContext(configurationService.getAllConfigurationsForProfile(profile.getId()));
+		
+		if(!context.validateConfiguration()) throw new ResourceNotFoundException("Configuration components missing");
+		
+		return context.runOneOffSession(key);
+	}
 	public ShardManager(ShardConfigurationService service) {
 		configurationService = service;
 	}

@@ -46,9 +46,10 @@ public abstract class ArcticTask<T, R> implements Runnable {
 	 * @param c OpenStack Client
 	 * @param priority Priority for queuing in ArcticCreator
 	 */
-	public ArcticTask(int priority) {
+	public ArcticTask(int priority, T t) {
 		this.priority = priority;
 		cdl = new CountDownLatch(0);
+		client = t;
 	}
 	
 	/**
@@ -57,11 +58,12 @@ public abstract class ArcticTask<T, R> implements Runnable {
 	 * @param priority Priority for queuing in ArcticCreator
 	 * @param depends List of ArcticTasks this threads needs to be finished first
 	 */
-	public ArcticTask(int priority, List<ArcticTask<T, ?>> depends) {
+	public ArcticTask(int priority, T t, List<ArcticTask<T, ?>> depends) {
 		this.priority = priority;
 		taskDependencies = depends;
 		cdl = new CountDownLatch(depends.size());
 		registerChildParent();
+		client = t;
 	}
 
 	/**

@@ -1,4 +1,4 @@
-package com.rahman.arctic.shard.shards;
+package com.rahman.arctic.shard.objects;
 
 import com.rahman.arctic.shard.exceptions.ResourceErrorException;
 import com.rahman.arctic.shard.exceptions.ResourceTimeoutException;

@@ -1,4 +1,4 @@
-package com.rahman.arctic.shard.objects;
+package com.rahman.arctic.shard.objects.abstraction;
 
 import java.util.Set;
 

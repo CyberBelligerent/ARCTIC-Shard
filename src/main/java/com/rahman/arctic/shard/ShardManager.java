@@ -42,82 +42,142 @@ public class ShardManager {
 			if(!configFile.exists() || !configFile.isFile()) {
 				System.out.println("Config file not found. Please Create file: " + f + " next to the jar file");
 				System.exit(1);
+	@PostConstruct
+	public void checkForPotentialShardPlugins() {
+		File providersFolder = new File("providers");
+		if (!providersFolder.exists()) {
+			if (!providersFolder.mkdir()) {
+				System.err.println("Failed to create providers directory");
 				return;
 			}
+			System.out.println("ARCTIC Shard: Providers empty, will be unable to connect to hypervisor");
+			return;
+		}
+
+		if (!providersFolder.isDirectory()) {
+			System.err.println("'providers' exists but is not a directory");
+			return;
+		}
+
+		System.out.println("Checking for ShardPlugins...");
+
+		File[] potentialProviderPlugins = providersFolder.listFiles();
+
+		if (potentialProviderPlugins == null || potentialProviderPlugins.length == 0) {
+			System.out.println("ARCTIC Shard: Providers empty, will be unable to connect to hypervisor");
+			return;
+		}
+
+		for (File potentialProviderPlugin : potentialProviderPlugins) {
+			enablePotentialShardPlugin(potentialProviderPlugin);
+		}
+	}
+
+	private void enablePotentialShardPlugin(File potentialProviderPlugin) {
+		if (!potentialProviderPlugin.getName().endsWith(".jar"))
+			return;
+
+		try {
+			URL jarUrl = potentialProviderPlugin.toURI().toURL();
+			URLClassLoader pluginLoader = new URLClassLoader(new URL[] { jarUrl },
+					Thread.currentThread().getContextClassLoader());
+
+			Yaml yaml = new Yaml();
+			Map<String, Object> yamlSettings;
+			try (InputStream stream = pluginLoader.getResourceAsStream("shard.yml")) {
+				if (stream == null) {
+					System.err.println("[" + potentialProviderPlugin.getName() + "] - ShardPlugin missing shard.yml");
+					pluginLoader.close();
+					return;
+				}
+				yamlSettings = yaml.load(stream);
+			}
 			
-			FileInputStream fis = null;
-			
+			ShardYamlReader syr = null;
 			try {
-				fis = new FileInputStream(configFile);
-				Map<String, Map<String, String>> properties = ProfileConfigReader.run(new Scanner(fis));
-				convertPropertiesToObject(properties);
-				
-				for(String key : properties.keySet()) {
-					Map<String, String> mainProps = properties.get(key);
-					if(!mainProps.containsKey("class")) {
-						System.out.println("Unable to Locate Cloud Environment Shard Loader for: " + key + " ...");
-						continue;
-					}
-					
-					Class<?> clazz = Class.forName(mainProps.get("class"));
-					Constructor<?> constructor = clazz.getDeclaredConstructor(ShardManager.class);
-					
-					Object instance = constructor.newInstance(this);
-					System.out.println("Successfully created instance: " + instance);
-				}
-			} catch(IOException | ClassNotFoundException e) {
-				System.out.println("Unable to read config file, please delete and recreate.");
-				System.exit(1);
+				syr = new ShardYamlReader(potentialProviderPlugin.getName(), yamlSettings);
+			} catch (Exception e) {
+				pluginLoader.close();
 				return;
-			} catch (InstantiationException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IllegalAccessException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IllegalArgumentException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (InvocationTargetException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (NoSuchMethodException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (SecurityException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} finally {
-				if(fis != null) {
-					try {
-						fis.close();
-					} catch (IOException e) {}
-				}
 			}
+
+			String pluginClassName = syr.getClassName();
+			Class<?> pluginClass = null;
+			try {
+				pluginClass = pluginLoader.loadClass(pluginClassName);
+			} catch (ClassNotFoundException e) {
+				System.err.println(
+						"[" + potentialProviderPlugin.getName() + "] - Unable to find class: " + pluginClassName);
+				pluginLoader.close();
+				return;
+			}
+
+			if (!ShardProviderTmpl.class.isAssignableFrom(pluginClass)) {
+				System.err.println("[" + potentialProviderPlugin.getName()
+						+ "] - Provider is not of instance ShardProviderTmpl.class");
+				pluginLoader.close();
+				return;
+			}
+
+			Object instantiatedPluginClass = pluginClass.getDeclaredConstructor().newInstance();
+			ShardProviderTmpl<?> shardPlugin = (ShardProviderTmpl<?>) instantiatedPluginClass;
+
+			if (shardPlugin.getDomain() == null || shardPlugin.getDomain().isBlank()) {
+				System.err.println(
+						"[" + shardPlugin.getDomain() + "] - Provider Domain is not set using getDomain()");
+				pluginLoader.close();
+				return;
+			}
+
+			if (configurationService == null) {
+				System.err
+						.println("[" + shardPlugin.getDomain() + "] - Unable to load configuration Service");
+				pluginLoader.close();
+				return;
+			}
+
+			shardPlugin.setShardPluginName(potentialProviderPlugin.getName());
+			shardPlugin.setLoader(pluginLoader);
+			populateDatabase(shardPlugin.getDomain(), syr);
+			
+			if (!shardPlugin.isInitialized()) {
+				System.err.println(
+						"[" + shardPlugin.getDomain() + "] - Provider was unable to hook injected variables");
+				pluginLoader.close();
+				return;
+			}
+			
+			System.out.println("[" + shardPlugin.getDomain() + "] - ShardPlugin registered");
+			registerShard(shardPlugin.getDomain(), shardPlugin);
+			shardPlugin.setYamlReader(syr);
+			shardPlugin.setEnabled(true);
+			shardPlugin.runPlugin();
+		} catch (MalformedURLException e) {
+			System.err.println("Unable to parse file path: " + potentialProviderPlugin.getName());
+		} catch (InstantiationException e) {
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			e.printStackTrace();
+		} catch (SecurityException e) {
+			e.printStackTrace();
+		} catch (IOException e1) {
+			e1.printStackTrace();
 		}
 	}
 	
-	/**
-	 * 
-	 * @param properties Domain with Key-Value properties to load into memory
-	 */
-	private void convertPropertiesToObject(Map<String, Map<String, String>> properties) {
-		Map<String, ProfileProperties> profiles = new HashMap<>();
-		for(Entry<String, Map<String, String>> entry : properties.entrySet()) {
-			String profileName = entry.getKey();
-			
-			System.out.println("Loading Profile: " + profileName);
-			
-			Map<String, String> props = entry.getValue();
-			profiles.put(profileName, new ProfileProperties(profileName, props));
 		}
 		
-		shardProperties = profiles;
 	}
 	
 	public void registerShard(String name, ShardProviderTmpl<?> shard) {
 		System.out.println("Shard: " + name + " Registered");
 		shards.put(name, shard);
 	}
-	
+
 }

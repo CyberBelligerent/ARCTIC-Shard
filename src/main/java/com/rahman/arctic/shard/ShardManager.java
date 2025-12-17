@@ -75,6 +75,24 @@ public class ShardManager {
 		
 		return context.runOneOffSession(key);
 	}
+	
+	@PreDestroy
+	public void destroyPluginLoaders() {
+		for (ShardProviderTmpl<?> shardPlugin : getShards().values()) {
+			try {
+				System.out.println("[" + shardPlugin.getShardPluginName() + "] - Closing");
+				try {
+					shardPlugin.pluginDisabled();
+				} catch (Exception e) {
+					System.err.println("[" + shardPlugin.getShardPluginName() + "] - Error with ShardPlugins Disable method");
+				}
+				shardPlugin.getLoader().close();
+			} catch (IOException e) {
+				System.err.println("[" + shardPlugin.getShardPluginName() + "] Issue with closing plugin");
+			}
+		}
+	}
+
 	public ShardManager(ShardConfigurationService service) {
 		configurationService = service;
 	}
@@ -227,6 +245,37 @@ public class ShardManager {
 		return objects;
 	}
 	
+//	public ShardProviderReference acquireShardProviderInformation(String name) {
+//		if(!shards.containsKey(name)) return new ShardProviderReference(name, false, false, true, "Unable to load", null, null);
+//		ShardProviderTmpl<?> shardPlugin = shards.get(name);
+//		
+//		List<ShardConfiguration> configOptions = configurationService.getAllConfigurationOptions(name);
+//		List<ShardConfigurationReference> configReference = new ArrayList<>();
+//		List<String> missingConfiguration = new ArrayList<>();
+//		if(configOptions != null) {
+//			for(ShardConfiguration sc : configOptions) {
+//				if(sc.isConfigRequired() && (sc.getConfigValue() == null || sc.getConfigValue().isBlank())) {
+//					missingConfiguration.add(sc.getConfigKey());
+//				}
+//				
+//				String domain = sc.getConfigDomain();
+//				String key = sc.getConfigKey();
+//				String value = "";
+//				String configType = sc.getConfigType().toString().toLowerCase();
+//				boolean isRequired = sc.isConfigRequired();
+//				if(sc.getConfigType().equals(ShardConfigurationType.PASSWORD)) {
+//					value = "********************";
+//				} else {
+//					value = configurationService.getConfiguration(domain, key);
+//				}
+//				
+//				configReference.add(new ShardConfigurationReference(key, value, configType, isRequired));
+//			}
+//		}
+//		
+//		return new ShardProviderReference(name, true, shardPlugin.isEnabled(), shardPlugin.isError(), shardPlugin.getErrorMessage(), configReference, missingConfiguration);
+//	}
+
 	public void registerShard(String name, ShardProviderTmpl<?> shard) {
 		System.out.println("Shard: " + name + " Registered");
 		shards.put(name, shard);

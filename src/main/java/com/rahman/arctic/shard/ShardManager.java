@@ -1,31 +1,45 @@
 package com.rahman.arctic.shard;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Scanner;
+import java.util.concurrent.CompletableFuture;
 
+import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
+import org.yaml.snakeyaml.Yaml;
 
-import com.rahman.arctic.shard.shards.ShardProviderTmpl;
-import com.rahman.arctic.shard.util.ProfileConfigReader;
-import com.rahman.arctic.shard.util.ProfileProperties;
+import com.rahman.arctic.shard.configuration.ShardConfigurationService;
+import com.rahman.arctic.shard.configuration.persistence.ShardConfiguration;
+import com.rahman.arctic.shard.configuration.persistence.ShardConfigurationType;
+import com.rahman.arctic.shard.configuration.persistence.ShardProfile;
+import com.rahman.arctic.shard.configuration.yaml.ShardYamlReader;
+import com.rahman.arctic.shard.configuration.yaml.ShardYamlSettingSection;
+import com.rahman.arctic.shard.objects.ShardConfigurationReference;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.Getter;
 
 @Service
 public class ShardManager {
 
 	@Getter
-	private Map<String, ProfileProperties> shardProperties = new HashMap<>();
-	
-	@Getter
 	private Map<String, ShardProviderTmpl<?>> shards = new HashMap<>();
+
+	@Getter
+	private Map<ShardProfile, ShardRunningContext<?>> runningShardProfiles = new HashMap<>();
+	
+	private final ShardConfigurationService configurationService;
+
 	
 	public ShardProviderTmpl<?> getPrimaryShard() {
 		// TODO: Allow this to be switchable
@@ -42,6 +56,10 @@ public class ShardManager {
 			if(!configFile.exists() || !configFile.isFile()) {
 				System.out.println("Config file not found. Please Create file: " + f + " next to the jar file");
 				System.exit(1);
+	public ShardManager(ShardConfigurationService service) {
+		configurationService = service;
+	}
+
 	@PostConstruct
 	public void checkForPotentialShardPlugins() {
 		File providersFolder = new File("providers");
@@ -171,8 +189,23 @@ public class ShardManager {
 		}
 	}
 	
+	private List<ShardConfigurationReference> populateDatabase(String domain, ShardYamlReader syr) {
+		if(syr.getConfigSections().isEmpty()) return null;
+		
+		List<ShardConfigurationReference> objects = new ArrayList<>();
+		for(ShardYamlSettingSection syss : syr.getConfigSections()) {
+			if(!configurationService.hasConfigurationDetail(domain, syss.getKey())) {
+				ShardConfiguration sc = new ShardConfiguration();
+				sc.setConfigDomain(domain);
+				sc.setConfigKey(syss.getKey());
+				sc.setConfigType(ShardConfigurationType.valueOf(syss.getType()));
+				sc.setConfigRequired(syss.isRequired());
+				configurationService.addConfigurationDetail(sc);
+				System.out.println("[" + domain + "] - Enabled configuration setting: " + syss.getKey());
+			}
 		}
 		
+		return objects;
 	}
 	
 	public void registerShard(String name, ShardProviderTmpl<?> shard) {

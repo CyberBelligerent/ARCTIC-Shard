@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.rahman.arctic.shard.configuration.persistence.ShardConfiguration;
 import com.rahman.arctic.shard.configuration.persistence.ShardProfile;
 import com.rahman.arctic.shard.configuration.persistence.ShardProfileSettings;
+import com.rahman.arctic.shard.objects.ShardConfigurationReference;
 import com.rahman.arctic.shard.repos.ShardConfigurationRepo;
 import com.rahman.arctic.shard.repos.ShardProfileRepo;
 import com.rahman.arctic.shard.repos.ShardProfileSettingsRepo;
@@ -39,6 +40,22 @@ public class ShardConfigurationService {
 		ShardConfiguration config = shardConfigRepo.findByConfigDomainAndConfigKey(domain, key).orElse(null);
 		
 		return (config == null) ? false : true;
+	}
+	
+	public Map<String, List<ShardConfigurationReference>> getAllConfiguration() {
+		List<ShardConfiguration> allConfig = shardConfigRepo.findAll();
+		
+		Map<String, List<ShardConfigurationReference>> configOptions = new HashMap<>();
+		
+		for(ShardConfiguration sc : allConfig) {
+			if(!configOptions.containsKey(sc.getConfigDomain())) configOptions.put(sc.getConfigDomain(), new ArrayList<>());
+			
+			ShardConfigurationReference scr = new ShardConfigurationReference(sc.getConfigKey(), sc.getConfigType().toString(), sc.isConfigRequired());
+			
+			configOptions.get(sc.getConfigDomain()).add(scr);
+		}
+		
+		return configOptions;
 	}
 	
 	public List<ShardConfiguration> getAllConfigurationOptions(String domain) {

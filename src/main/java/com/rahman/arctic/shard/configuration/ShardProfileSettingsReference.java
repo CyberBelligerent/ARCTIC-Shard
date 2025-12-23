@@ -12,6 +12,12 @@ public class ShardProfileSettingsReference {
 		settings = Collections.unmodifiableMap(new HashMap<>(settingsSnapshot));
 	}
 	
+	public void printAllSettings() {
+		for(String key : settings.keySet()) {
+			System.out.println(key + ":" + settings.get(key));
+		}
+	}
+	
 	public String getConfiguration(String key) {
 		if(!settings.containsKey(key)) return null;
 		return settings.get(key);

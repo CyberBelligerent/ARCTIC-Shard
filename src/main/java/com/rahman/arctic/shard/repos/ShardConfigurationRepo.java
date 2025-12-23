@@ -10,8 +10,6 @@ import com.rahman.arctic.shard.configuration.persistence.ShardConfiguration;
 
 @Repository
 public interface ShardConfigurationRepo extends JpaRepository<ShardConfiguration, String> {
-	
 	public Optional<ShardConfiguration> findByConfigDomainAndConfigKey(String configDomain, String configKey);
 	public Optional<List<ShardConfiguration>> findAllByConfigDomain(String configDomain);
-	
 }

@@ -73,7 +73,7 @@ public class ShardConfigurationService {
 		List<ShardProfileSettings> profileSettings = profileSettingsRepo.findAllByProfileId(profileId).orElse(new ArrayList<>());
 		if(profileSettings.isEmpty()) {
 			System.err.println("Somehow, the list is returning null");
-			return null;
+			return new ShardProfileSettingsReference(new HashMap<String, String>());
 		}
 		
 		Map<String, String> settings = new HashMap<>();

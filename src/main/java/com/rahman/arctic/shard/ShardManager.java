@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
 
 import com.rahman.arctic.shard.configuration.ShardConfigurationService;
+import com.rahman.arctic.shard.configuration.ShardProfileStatus;
 import com.rahman.arctic.shard.configuration.persistence.ShardConfiguration;
 import com.rahman.arctic.shard.configuration.persistence.ShardConfigurationType;
 import com.rahman.arctic.shard.configuration.persistence.ShardProfile;
@@ -51,13 +52,28 @@ public class ShardManager {
 		runningShardProfiles.put(profile, context);
 	}
 	
-	public boolean performConnectionTest(ShardProfile profile) {
+	public ShardProfileStatus performConnectionTest(ShardProfile profile) {
 		ShardProviderTmpl<?> provider = shards.get(profile.getDomain());
-		if(provider == null) return false;
+		if(provider == null) return ShardProfileStatus.ERROR;
 		ShardRunningContext<?> context = provider.createRunningContext(configurationService.getAllConfigurationsForProfile(profile.getId()));
 		
-		if(!context.validateConfiguration()) return false;
-		return context.performConnectionTest();
+		if(!context.validateConfiguration()) return ShardProfileStatus.MISCONFIGURED;
+		
+		
+		try {
+			boolean testComplete = context.performConnectionTest();
+			
+			System.out.println(testComplete);
+			
+			if(testComplete) {
+				return ShardProfileStatus.ENABLED;
+			} else {
+				return ShardProfileStatus.LOADED;
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ShardProfileStatus.ERROR;
+		}
 	}
 	
 	public ShardRunningContext<?> getSession(ShardProfile profile) {

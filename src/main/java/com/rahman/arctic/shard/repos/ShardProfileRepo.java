@@ -12,4 +12,5 @@ import com.rahman.arctic.shard.configuration.persistence.ShardProfile;
 public interface ShardProfileRepo extends JpaRepository<ShardProfile, String> {
 	Optional<ShardProfile> findByUsernameAndDomain(String user, String domain);
 	List<ShardProfile> findAllByUsername(String username);
+	Optional<ShardProfile> findByUsernameAndProfileName(String username, String name);
 }

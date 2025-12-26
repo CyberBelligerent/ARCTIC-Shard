@@ -23,5 +23,8 @@ public class ShardProfile {
 	
 	@Getter @Setter
 	private String domain;
+
+	@Getter @Setter
+	private String status;
 	
 }

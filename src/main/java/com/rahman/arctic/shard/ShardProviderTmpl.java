@@ -2,6 +2,7 @@ package com.rahman.arctic.shard;
 
 import java.lang.reflect.Method;
 import java.net.URLClassLoader;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 
@@ -14,6 +15,7 @@ import com.rahman.arctic.shard.objects.abstraction.ArcticRouterSO;
 import com.rahman.arctic.shard.objects.abstraction.ArcticSecurityGroupRuleSO;
 import com.rahman.arctic.shard.objects.abstraction.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.abstraction.ArcticVolumeSO;
+import com.rahman.arctic.shard.shards.ShardObjectType;
 import com.rahman.arctic.shard.shards.ShardProviderUICreation;
 import com.rahman.arctic.shard.shards.UIField;
 import com.rahman.arctic.shard.shards.UIFieldCreation;
@@ -28,7 +30,7 @@ public abstract class ShardProviderTmpl<T> {
 	private String shardPluginName;
 	
 	@Getter
-	private LinkedHashSet<UIFieldCreation<T>> uiCreationTools = new LinkedHashSet<>();
+	private Map<ShardObjectType, LinkedHashSet<UIFieldCreation<T>>> obtainableFutures = new HashMap<>();
 	
 	@Getter
 	@Setter
@@ -82,7 +84,10 @@ public abstract class ShardProviderTmpl<T> {
 		uiTool.setProvider(this);
 		
 		UIField f = m.getAnnotation(UIField.class);
-		uiCreationTools.add(new UIFieldCreation<T>(f.key(), f.label(), uiTool));
+		
+		if(!obtainableFutures.containsKey(f.object())) obtainableFutures.put(f.object(), new LinkedHashSet<>());
+		
+		obtainableFutures.get(f.object()).add(new UIFieldCreation<T>(f.key(), f.label(), f.type(), uiTool));
 	}
 	
 	@SuppressWarnings("unchecked")

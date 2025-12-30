@@ -37,7 +37,7 @@ public class ShardManager {
 	private Map<String, ShardProviderTmpl<?>> shards = new HashMap<>();
 
 	@Getter
-	private Map<ShardProfile, ShardRunningContext<?>> runningShardProfiles = new HashMap<>();
+	private Map<String, ShardRunningContext<?>> runningShardProfiles = new HashMap<>();
 	
 	private final ShardConfigurationService configurationService;
 
@@ -49,7 +49,13 @@ public class ShardManager {
 		if(!context.validateConfiguration()) throw new ResourceNotFoundException("Configuration components missing");
 		
 		context.createClient();
-		runningShardProfiles.put(profile, context);
+		runningShardProfiles.put(profile.getId(), context);
+	}
+	
+	public void deleteSession(ShardProfile profile) {
+		if(!runningShardProfiles.containsKey(profile.getId())) return;
+	
+		runningShardProfiles.remove(profile.getId());
 	}
 	
 	public ShardProfileStatus performConnectionTest(ShardProfile profile) {
@@ -77,7 +83,7 @@ public class ShardManager {
 	}
 	
 	public ShardRunningContext<?> getSession(ShardProfile profile) {
-		ShardRunningContext<?> context = runningShardProfiles.get(profile);
+		ShardRunningContext<?> context = runningShardProfiles.get(profile.getId());
 		if(context == null) throw new ResourceNotFoundException("Unable to load running shard context");
 		return context;
 	}

@@ -25,6 +25,8 @@ import com.rahman.arctic.shard.configuration.persistence.ShardProfile;
 import com.rahman.arctic.shard.configuration.yaml.ShardYamlReader;
 import com.rahman.arctic.shard.configuration.yaml.ShardYamlSettingSection;
 import com.rahman.arctic.shard.objects.ShardConfigurationReference;
+import com.rahman.arctic.shard.shards.ShardObjectType;
+import com.rahman.arctic.shard.shards.UIFieldReference;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -88,14 +90,17 @@ public class ShardManager {
 		return context;
 	}
 	
-	public CompletableFuture<?> createOneOffSession(ShardProfile profile, String key) {
+	public CompletableFuture<List<UIFieldReference>> createOneOffSession(ShardProfile profile, ShardObjectType type) {
 		ShardProviderTmpl<?> provider = shards.get(profile.getDomain());
 		if(provider == null) throw new ResourceNotFoundException("Unable to load domain");
 		ShardRunningContext<?> context = provider.createRunningContext(configurationService.getAllConfigurationsForProfile(profile.getId()));
 		
 		if(!context.validateConfiguration()) throw new ResourceNotFoundException("Configuration components missing");
 		
-		return context.runOneOffSession(key);
+		List<CompletableFuture<UIFieldReference>> references = context.runFields(type);
+		
+		CompletableFuture<Void> UIFieldTools = CompletableFuture.allOf(references.toArray(new CompletableFuture[0]));
+		return UIFieldTools.thenApply(v -> references.stream().map(CompletableFuture::join).toList());
 	}
 	
 	@PreDestroy

@@ -11,11 +11,15 @@ public class UIFieldCreation<T> {
 	private String label;
 	
 	@Getter
+	private FieldType type;
+	
+	@Getter
 	private ShardProviderUICreation<T, ?> uiTool;
 	
-	public UIFieldCreation(String k, String l, ShardProviderUICreation<T, ?> uT) {
+	public UIFieldCreation(String k, String l, FieldType t, ShardProviderUICreation<T, ?> uT) {
 		key = k;
 		label = l;
+		type = t;
 		uiTool = uT;
 	}
 	

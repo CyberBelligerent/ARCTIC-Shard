@@ -12,6 +12,6 @@ public @interface UIField {
 
 	String key();
 	String label();
-//	FieldType type();
-	
+	ShardObjectType object() default ShardObjectType.HOST;
+	FieldType type() default FieldType.SELECT;
 }

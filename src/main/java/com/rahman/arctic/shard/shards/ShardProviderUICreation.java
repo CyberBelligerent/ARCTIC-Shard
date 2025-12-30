@@ -1,31 +1,28 @@
 package com.rahman.arctic.shard.shards;
 
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 import com.rahman.arctic.shard.ShardProviderTmpl;
 
-import lombok.Getter;
-
 public abstract class ShardProviderUICreation<T, ReturnedItem> {
 	
-	@Getter
-	private T client;
-	private ShardProviderTmpl<?> provider;
-
-    public void setProvider(ShardProviderTmpl<?> provider) {
+	private ShardProviderTmpl<T> provider;
+	
+    public void setProvider(ShardProviderTmpl<T> provider) {
         this.provider = provider;
     }
 
-    protected ShardProviderTmpl<?> getProvider() {
+    protected ShardProviderTmpl<T> getProvider() {
         return provider;
     }
-	
-    public <c> CompletableFuture<List<ReturnedItem>> initialize(T t) {
-    	client = t;
-    	return returnResult();
-    }
     
-	public abstract CompletableFuture<List<ReturnedItem>> returnResult();
+	public abstract ReturnedItem returnResult(T t);
+	
+	public CompletableFuture<ReturnedItem> returnResults(T t, Executor executor) {
+		return CompletableFuture.supplyAsync(() -> {
+			return returnResult(t);
+		}, executor);
+	}
 	
 }

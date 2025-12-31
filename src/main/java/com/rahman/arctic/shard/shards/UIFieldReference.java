@@ -6,5 +6,6 @@ import lombok.Data;
 public class UIFieldReference {
 	private String key;
 	private String label;
+	private FieldType type;
 	private Object returnValue;
 }

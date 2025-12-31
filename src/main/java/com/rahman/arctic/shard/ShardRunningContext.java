@@ -18,6 +18,7 @@ import com.rahman.arctic.shard.objects.abstraction.ArcticRouterSO;
 import com.rahman.arctic.shard.objects.abstraction.ArcticSecurityGroupRuleSO;
 import com.rahman.arctic.shard.objects.abstraction.ArcticSecurityGroupSO;
 import com.rahman.arctic.shard.objects.abstraction.ArcticVolumeSO;
+import com.rahman.arctic.shard.shards.FieldType;
 import com.rahman.arctic.shard.shards.ShardObjectType;
 import com.rahman.arctic.shard.shards.UIFieldCreation;
 import com.rahman.arctic.shard.shards.UIFieldReference;
@@ -66,7 +67,6 @@ public class ShardRunningContext<T> {
 	}
 
 	public List<CompletableFuture<UIFieldReference>> runFields(ShardObjectType type) {
-		if (!provider.getObtainableFutures().containsKey(type))
 		createClient();
 		
 		if (!provider.getObtainableFutures().containsKey(type)) {
@@ -83,6 +83,7 @@ public class ShardRunningContext<T> {
 				UIFieldReference ufr = new UIFieldReference();
 				ufr.setKey(e.getKey());
 				ufr.setLabel(e.getLabel());
+				ufr.setType(FieldType.SELECT);
 				ufr.setReturnValue(result);
 				return ufr;
 			}).exceptionally(ex -> {
@@ -94,6 +95,7 @@ public class ShardRunningContext<T> {
 				UIFieldReference ufr = new UIFieldReference();
 				ufr.setKey(e.getKey());
 				ufr.setLabel(e.getLabel());
+				ufr.setType(FieldType.SELECT);
 				ufr.setReturnValue("Error");
 				return ufr;
 			});

@@ -2,6 +2,7 @@ package com.rahman.arctic.shard;
 
 import java.lang.reflect.Method;
 import java.net.URLClassLoader;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -68,12 +69,15 @@ public abstract class ShardProviderTmpl<T> {
 
 	public <R> void registerUICreation(ShardProviderUICreation<T, R> uiTool) {
 		
-		Method m = null;
-		try {
-			m = uiTool.getClass().getMethod("returnResult");
-		} catch (NoSuchMethodException | SecurityException e) {
-			System.err.println("Unable to find required Method 'returnResult'");
-			return;
+		Method m = Arrays.stream(uiTool.getClass().getMethods())
+		        .filter(method -> method.getName().equals("returnResult"))
+		        .filter(method -> method.getParameterCount() == 1)
+		        .findFirst()
+		        .orElse(null);
+
+		if (m == null) {
+		    System.err.println("Unable to find required Method 'returnResult(T)'");
+		    return;
 		}
 		
 		if(!m.isAnnotationPresent(UIField.class)) {

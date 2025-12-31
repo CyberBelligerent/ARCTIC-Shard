@@ -87,6 +87,8 @@ public abstract class ShardProviderTmpl<T> {
 		
 		if(!obtainableFutures.containsKey(f.object())) obtainableFutures.put(f.object(), new LinkedHashSet<>());
 		
+		System.out.println("[" + getDomain() + "]" + " adding key for " + f.object().toString());
+		
 		obtainableFutures.get(f.object()).add(new UIFieldCreation<T>(f.key(), f.label(), f.type(), uiTool));
 	}
 	

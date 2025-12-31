@@ -67,7 +67,12 @@ public class ShardRunningContext<T> {
 
 	public List<CompletableFuture<UIFieldReference>> runFields(ShardObjectType type) {
 		if (!provider.getObtainableFutures().containsKey(type))
+		createClient();
+		
+		if (!provider.getObtainableFutures().containsKey(type)) {
+			System.err.println("Provider Context does not contain Object Type: " + type.toString());
 			return new ArrayList<>();
+		}
 
 		LinkedHashSet<UIFieldCreation<T>> fields = provider.getObtainableFutures().get(type);
 		List<CompletableFuture<UIFieldReference>> references = new ArrayList<>();
@@ -81,6 +86,11 @@ public class ShardRunningContext<T> {
 				ufr.setReturnValue(result);
 				return ufr;
 			}).exceptionally(ex -> {
+				if(ex.getCause() != null) {
+					System.out.println(ex.getCause().getMessage());
+				} else {
+					System.out.println(ex.getMessage());
+				}
 				UIFieldReference ufr = new UIFieldReference();
 				ufr.setKey(e.getKey());
 				ufr.setLabel(e.getLabel());

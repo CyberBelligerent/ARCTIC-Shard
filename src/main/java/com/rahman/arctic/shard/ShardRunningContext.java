@@ -93,38 +93,6 @@ public class ShardRunningContext<T> {
 		
 		return references;
 	}
-	
-//	return CompletableFuture.supplyAsync(() -> {
-//	List<UIFieldReference> values = new ArrayList<>();
-//
-//	fields.forEach(e -> {
-//		CompletableFuture<?> j = e.getUiTool().returnResult();
-//
-//		UIFieldReference ufr = new UIFieldReference();
-//		ufr.setKey(e.getKey());
-//		ufr.setLabel(e.getLabel());
-//		ufr.setReturnValue(j);
-//
-//		values.add(ufr);
-//	});
-//
-//	return values;
-//});
-
-//	public CompletableFuture<?> runOneOffSession(String key) {
-//		UIFieldCreation<T> uiToRun = null;
-//		for(UIFieldCreation<T> ui : provider.getUiCreationTools()) {
-//			if(ui.getKey().equals(key)) {
-//				uiToRun = ui;
-//				break;
-//			}
-//		}
-//		
-//		if(uiToRun == null) throw new ResourceNotFoundException("Provider does not have UIField with name: " + key);
-//		
-//		uiToRun.getUiTool().initialize(getClient());
-//		return uiToRun.getUiTool().returnResult();
-//	}
 
 	@Getter
 	private Map<String, ArcticTask<T, ?>> networkTasks = new HashMap<>();

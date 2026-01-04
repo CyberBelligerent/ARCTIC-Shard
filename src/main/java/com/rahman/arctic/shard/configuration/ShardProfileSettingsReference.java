@@ -4,11 +4,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import lombok.Getter;
+
 public class ShardProfileSettingsReference {
 
+	@Getter
+	private final String username;
 	private final Map<String, String> settings;
 	
-	public ShardProfileSettingsReference(Map<String, String> settingsSnapshot) {
+	public ShardProfileSettingsReference(String u, Map<String, String> settingsSnapshot) {
+		username = u;
 		settings = Collections.unmodifiableMap(new HashMap<>(settingsSnapshot));
 	}
 	

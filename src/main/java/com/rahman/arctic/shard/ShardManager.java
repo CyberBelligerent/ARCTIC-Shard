@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import org.openstack4j.api.exceptions.ConnectionException;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 import org.yaml.snakeyaml.Yaml;
@@ -78,6 +79,9 @@ public class ShardManager {
 			} else {
 				return ShardProfileStatus.LOADED;
 			}
+		} catch (ConnectionException e) {
+			e.printStackTrace();
+			return ShardProfileStatus.ERROR;
 		} catch (Exception e) {
 			e.printStackTrace();
 			return ShardProfileStatus.ERROR;

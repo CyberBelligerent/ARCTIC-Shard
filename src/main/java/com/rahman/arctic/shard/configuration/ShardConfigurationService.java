@@ -73,7 +73,7 @@ public class ShardConfigurationService {
 		List<ShardProfileSettings> profileSettings = profileSettingsRepo.findAllByProfileId(profileId).orElse(new ArrayList<>());
 		if(profileSettings.isEmpty()) {
 			System.err.println("Somehow, the list is returning null");
-			return new ShardProfileSettingsReference(new HashMap<String, String>());
+			return new ShardProfileSettingsReference(sp.getUsername(), new HashMap<String, String>());
 		}
 		
 		Map<String, String> settings = new HashMap<>();
@@ -81,7 +81,7 @@ public class ShardConfigurationService {
 			settings.put(sps.getProfileKey(), crypto.decryptValue(sps.getProfileValue()));
 		}
 		
-		return new ShardProfileSettingsReference(settings);
+		return new ShardProfileSettingsReference(sp.getUsername(), settings);
 	}
 	
 	@Transactional

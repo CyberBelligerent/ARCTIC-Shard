@@ -8,23 +8,16 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
+@Getter @Setter
 public class ShardProfile {
 	
 	@Id
 	@GeneratedValue(strategy = GenerationType.UUID)
-	@Getter
 	private String id;
-	
-	@Getter @Setter
 	private String username;
-	
-	@Getter @Setter
 	private String profileName;
-	
-	@Getter @Setter
 	private String domain;
-
-	@Getter @Setter
 	private String status;
+	private String errorMessage;
 	
 }

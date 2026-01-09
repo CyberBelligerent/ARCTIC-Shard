@@ -8,7 +8,7 @@ import lombok.Data;
 @Data
 public class ArcticHostSO {
 	private String ip;
-	private String providereId;
+	private String providerId;
 	private String name;
 	private String defaultUser;
 	private String defaultPassword;

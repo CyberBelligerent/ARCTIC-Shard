@@ -5,7 +5,7 @@ import lombok.Data;
 @Data
 public class ArcticNetworkSO {
 	private String name;
-	private String providereId;
+	private String providerId;
 	private String rangeId;
 	private String ipRangeStart;
 	private String ipRangeEnd;

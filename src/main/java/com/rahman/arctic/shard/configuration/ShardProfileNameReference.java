@@ -4,5 +4,5 @@ import lombok.Data;
 
 @Data
 public class ShardProfileNameReference {
-	public String name;
+	private String name;
 }

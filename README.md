@@ -1,225 +1,312 @@
 # ARCTIC-Shard
-Shard is the interface that connects Iceberg with the associated Cloud Provider for building the resources that are used with the range.
+Shard is the plugin engine that connects ARCTIC to a hypervisor or cloud provider. It handles plugin loading, configuration management, client creation, and the execution of range build tasks.
 
-## Building A New Provider
-Creating a new provider connector can be tedious and time-consuming. It is recommended to know the providers Library/API before moving on.
+## Plugin System Overview
+Shard uses a runtime plugin system. Each provider connector is packaged as a JAR and placed in the `providers/` folder alongside the running application. On startup, `ShardManager` scans that folder, reads each JAR's descriptor, and registers the plugin automatically. No code changes to ARCTIC are needed to add a new provider.
 
-For the purposes of this README, all documentation and examples are using OpenStack. The documentation can be found at: https://openstack4j.github.io/
+```
+providers/
+  openstack-shard.jar
+  my-new-provider.jar
+```
 
-### Defining the Provider
-First Step, is to create a class that extends <b>ShardProviderTmpl</b> and type the Client being provided.
+---
 
-<b>Example</b>
+## Building a New Provider
+
+Creating a new provider connector requires understanding the target hypervisor's Java library or API before starting. For the purposes of this README, all examples use OpenStack via the OpenStack4J library. Documentation can be found at: https://openstack4j.github.io/
+
+### Step 1: The shard.yml Descriptor
+Every plugin JAR must include a `shard.yml` file at the root of the JAR. This file tells Shard what class to load, what version the plugin is, and what configuration keys the plugin requires. The configuration keys defined here are automatically registered in the database and surfaced to the user through the ARCTIC UI.
+
+```yaml
+class: com.example.MyProviderShard
+version: 1.0
+config_settings:
+  endpoint:
+    type: "url"
+    required: true
+  username:
+    type: "string"
+    required: true
+  password:
+    type: "password"
+    required: true
+  domain:
+    type: "string"
+    required: false
+```
+
+**Supported types:** `string`, `password`, `url`
+
+Required fields will be validated before a session is created. If a required field is missing, the build will be rejected before your plugin is called.
+
+---
+
+### Step 2: Defining the Provider Class
+Create a class that extends `ShardProviderTmpl` and type it with the client object your hypervisor library provides.
+
+**Template:**
 ```java
 public class ProviderExampleShard extends ShardProviderTmpl<ClientClass> {
 
-  public ProviderExampleShard() {
-    super("provider");
-  }
+    @Override
+    public String getDomain() {
+        return "provider"; // Must be unique. Must match what users select in the UI.
+    }
 
-  // Provider Code Here
+    // Provider code here
 }
 ```
-<b>Practical Example</b>
+
+**Practical Example:**
 ```java
 public class OpenStackShard extends ShardProviderTmpl<OSClientV3> {
 
-  public OpenStackShard() {
-    super("openstack");
-  }
+    @Override
+    public String getDomain() {
+        return "openstack";
+    }
 
-  // Provider Code Here
-}
-```
-In the above example, the OSClientV3 is the Client object imported from OpenStack4J. The Super method with the String argument tells ShardProviderTmpl where to pull your configuration settings for your specific shard. This is currently stored in a file located at <b>./.providers</b>.
-
-The Settings look like:
-```
-[provider]
-option1 = value1
-option2 = value2
-option3 = value3
-
-[openstack]
-option1 = value1
-option2 = value2
-option3 = value3
-```
-### Creating the Client
-One of the most important classes is defining and creating the Client object that will be used for creation of all range objects. (I.E. Networks, Routers, Hosts, Volumes....)
-
-The code below outlines the abstract method you'll need to create.
-```java
-@Override
-public T createClient();
-```
-
-It is your job to understand how to create the client and what variables are needed for the client to work. Below is an example of connecting to OpenStack. Both the Java file and Config file:
-
-<b>OpenStackShard.java</b>
-```java
-@Override
-public OSClientV3 createClient() {
-	String endpoint = getProperties().getPropertyValue("endpoint");
-	String username = getProperties().getPropertyValue("username");
-	String password = getProperties().getPropertyValue("password");
-	String projectId = getProperties().getPropertyValue("projectId");
-	
-	if(endpoint == null || username == null || password == null || projectId == null) {
-		System.out.println("Required configuration details do not exists. Please add and re-run.");
-		System.exit(1);
-		return null;
-	}
-	
-	String domain = getProperties().getPropertyValue("domain");
-	
-	if(domain == null) {
-		domain = "Default";
-	}
-	
-	OSClientV3 mainOSC = OSFactory.builderV3()
-			.endpoint(endpoint)
-			.credentials(username, password, Identifier.byName(domain))
-			.scopeToProject(Identifier.byId(projectId))
-			.authenticate();
-	
-	return mainOSC;
+    // Provider code here
 }
 ```
 
-<b>./.providers</b>
-```
-[openstack]
-endpoint = 12.0.0.1:8006/api3
-username = admin
-password = password
-projectId = {UID of Admin Project}
-domain = Default
-```
+`getDomain()` returns the unique identifier for your plugin. It is used as the key in the plugin registry and must match the domain string users reference when creating a provider profile.
 
-<b>getProperties()</b> is built when extended <b>ShardProviderTmpl</b> and providing your configuration section string in the <b>super()</b> method.
+---
 
-### Arctic Objects
-ARCTIC comes pre-built with wrapper classes that will push information to your new provider connector class. The ARCTIC Object MAY have more information in it than you need to use to create the object for the specific provider. Make sure to read through all variables the Wrapper Object has.
+### Step 3: Plugin Lifecycle Methods
+Two optional lifecycle hooks are available. Override them if your plugin needs setup or teardown logic.
 
-Currently available Arctic Wrapper Objects:
-
-```
-ArcticHost
-ArcticNetwork
-ArcticRouter
-ArcticSecurityGroup
-ArcticVolume
-```
-
-### Arctic Task
-<b>We will explore creating the ArcticTask in the next section, this is only meant to help understand what the class is.</b>
-
-The ArcticTask is a thread-ready class that will be used to build, and wait, for your provider object to be ready. There are two ways to create an ArcticTask
 ```java
-public ArcticTask(int priority);
-public ArcticTask(int priority, List<ArcticTask<T, ?>> depends);
+@Override
+public void pluginEnabled() {
+    // Called once when the plugin is successfully loaded at startup.
+    // Use this to register UI field creators (see UI Fields section below).
+    System.out.println("[openstack] Plugin loaded");
+}
+
+@Override
+public void pluginDisabled() {
+    // Called when the application is shutting down.
+    System.out.println("[openstack] Plugin unloaded");
+}
 ```
 
-When creating an ArcticTask, it is your job to ensure you know what needs to be built first. A lower number means it will be created first (0 is created before 1). The IcebergCreator class will automatically sort the ArcticTasks by priority when building. You will not need to worry about sorting.
+---
 
-Some objects require certain objects to be created <b>before</b> the object can be created. For example, an OpenStack instance needs to have the network and volumes made that you want to add to that host. Be sure you understand what objects are required when building the object.
+### Step 4: Creating the Client
+`createClient` is called each time a new session is needed. It receives a `ShardProfileSettingsReference` containing the user's decrypted configuration values for this profile. Return your connected client object, or call `failWithMessage()` and return `null` if a required setting is missing or the connection fails.
 
-All resources can be obtained from the following methods inside of your class that extends <b>ShardProviderTmpl</b>
-```
-getNetworkTasks(); // Network Objects
-getInstanceTasks(); // Instance/Host Objects
-getSecurityGroupTasks(); // Security Group Objects
-getVolumeTasks(); // Volume Objects
-getRouterTasks(); // Router Objects
-```
-<b>These will be available automatically, no need to add objects to these lists</b>
-
-Creating a new ArcticTask will require the following methods:
 ```java
-public abstract R action();
-public abstract void waitMethod(R resource);
+@Override
+public OSClientV3 createClient(ShardProfileSettingsReference config) {
+    String endpoint  = config.getConfiguration("endpoint");
+    String username  = config.getConfiguration("username");
+    String password  = config.getConfiguration("password");
+    String projectId = config.getConfiguration("projectId");
+
+    if (endpoint == null || username == null || password == null || projectId == null) {
+        failWithMessage("Required configuration missing. Check provider settings.");
+        return null;
+    }
+
+    String domain = config.getConfigurationOrDefault("domain", "Default");
+
+    return OSFactory.builderV3()
+            .endpoint(endpoint)
+            .credentials(username, password, Identifier.byName(domain))
+            .scopeToProject(Identifier.byId(projectId))
+            .authenticate();
+}
 ```
 
-<b>action</b> Is actually connecting to the provider to build out the object you need and returning it.
-<b>waitMethod(R resource)</b> Is the method that dictates how you need to wait for your object to be ready before moving on. As well as where you put the Timeout and ResourceNotAvailable exeptions.
+**Configuration methods on `ShardProfileSettingsReference`:**
 
-### Creator Methods
-Extending <b>ShardProviderTmpl</b> will require the following methods:
+| Method | Behavior |
+|--------|----------|
+| `getConfiguration(key)` | Returns the value or `null` if not set |
+| `getConfigurationOrDefault(key, default)` | Returns the value or the default if not set or blank |
+| `hasConfiguration(key)` | Returns true if the key exists |
+
+**Error handling:** Use `failWithMessage(String)` instead of throwing exceptions or calling `System.exit()`. This marks the plugin state as errored and logs the message cleanly.
+
 ```java
-protected abstract ArcticTask<T,?> buildHost(ArcticHost ah);
-protected abstract ArcticTask<T,?> buildNetwork(ArcticNetwork an);
-protected abstract ArcticTask<T,?> buildSecurityGroup(ArcticSecurityGroup asg);
-protected abstract ArcticTask<T,?> buildRouter(ArcticRouter ar);
-protected abstract ArcticTask<T,?> buildVolume(ArcticVolume av);
+failWithMessage("Could not authenticate with the provided credentials.");
+return null;
 ```
-These methods will handle how your specific Cloud Provider, with your specific client, will build the actual object. Currently, all objects must be built by THAT specific client. There is no delegating specific objects off to another client.
 
-Example taken from <b>OpenStackShard</b>
+---
+
+### Step 5: Arctic Service Objects (SOs)
+ARCTIC passes hypervisor-neutral service objects into your `build*` methods. These carry the fields needed to create each resource. Read what you need — some fields may not apply to your provider.
+
+| SO Class | Key Fields |
+|----------|-----------|
+| `ArcticHostSO` | `name`, `ip`, `osType`, `rangeId`, `networks` (Set), `volumes` (Set), `extraVariables` (Map) |
+| `ArcticNetworkSO` | `name`, `ipCidr`, `ipGateway`, `ipRangeStart`, `ipRangeEnd`, `rangeId` |
+| `ArcticVolumeSO` | `name`, `size`, `imageId`, `bootable`, `description`, `rangeId` |
+| `ArcticRouterSO` | `name`, `connectedNetworkNames` (Set), `rangeId` |
+| `ArcticSecurityGroupSO` | `name`, `description`, `rangeId` |
+| `ArcticSecurityGroupRuleSO` | `name`, `direction`, `protocol`, `startPortRange`, `endPortRange`, `eth`, `secGroup`, `rangeId` |
+
+Hypervisor-specific values that don't have a dedicated field (e.g. flavor ID, image ID) are stored in `extraVariables`:
+
+```java
+String flavorId = ah.getExtraVariables().get("flavorId");
+String imageId  = ah.getExtraVariables().get("osId");
+```
+
+After a resource is created, call `setProviderId(String)` on the SO to store the hypervisor-assigned ID back on the object.
+
+---
+
+### Step 6: The ArcticTask
+`ArcticTask<Client, Resource>` is the unit of async work. Each `build*` method returns one. The task has two responsibilities: `action()` creates the resource and returns it, and `waitMethod(Resource)` blocks until the resource is ready.
+
+**Constructors:**
+```java
+new ArcticTask<>(int priority, List<ArcticTask<?, ?>> dependencies) { ... }
+```
+
+Lower priority number = built first. Tasks with dependencies will block until all dependency tasks complete before running.
+
+**General priority ordering:**
+
+| Priority | Resource Type |
+|----------|--------------|
+| 1 | Networks |
+| 2 | Address Ranges / Subnets |
+| 3 | Volumes |
+| 10 | Instances / Hosts |
+| Last | Security Groups |
+
+**Task maps are on `ShardRunningContext`**, not the provider. Access them via the `context` argument passed into each `build*` method:
+
+```java
+context.getNetworkTasks()       // Map<String, ArcticTask<T, ?>>
+context.getInstanceTasks()
+context.getVolumeTasks()
+context.getRouterTasks()
+context.getSecurityGroupTasks()
+context.getSecurityGroupRuleTasks()
+```
+
+Use `getTypedTask()` for a safe cast when pulling a dependency from a task map:
+```java
+ArcticTask<OSClientV3, Network> netTask = getTypedTask(context.getNetworkTasks(), networkName);
+```
+
+---
+
+### Step 7: Implementing the Build Methods
+Extend `ShardProviderTmpl` and implement all six build methods. Each receives the running context and an SO.
+
+```java
+protected abstract ArcticTask<T, ?> buildHost(ShardRunningContext<T> context, ArcticHostSO ah);
+protected abstract ArcticTask<T, ?> buildNetwork(ShardRunningContext<T> context, ArcticNetworkSO an);
+protected abstract ArcticTask<T, ?> buildVolume(ShardRunningContext<T> context, ArcticVolumeSO av);
+protected abstract ArcticTask<T, ?> buildRouter(ShardRunningContext<T> context, ArcticRouterSO ar);
+protected abstract ArcticTask<T, ?> buildSecurityGroup(ShardRunningContext<T> context, ArcticSecurityGroupSO asg);
+protected abstract ArcticTask<T, ?> buildSecurityGroupRule(ShardRunningContext<T> context, ArcticSecurityGroupRuleSO asgr);
+```
+
+**Full example — `buildHost` from OpenStackShard:**
 ```java
 @SuppressWarnings("unchecked")
 @Override
-protected ArcticTask<OSClientV3, Server> buildHost(ArcticHost ah) {
-	// Create the lists that will hold the dependencies needed further into the method
-	List<ArcticTask<OSClientV3, Volume>> volumes = new ArrayList<>();
-	List<ArcticTask<OSClientV3, Network>> networks = new ArrayList<>();
-	List<ArcticTask<OSClientV3, ?>> depends = new ArrayList<>();
-	
-	// Grab all networks and volumes from ArcticHost and add
-	// 		them into the lists above
-	ah.getNetworks().forEach(e -> {
-		networks.add((ArcticTask<OSClientV3, Network>) getNetworkTasks().get(e));
-		depends.add(getNetworkTasks().get(e));
-	});
-	
-	ah.getVolumes().forEach(e -> {
-		volumes.add((ArcticTask<OSClientV3, Volume>) getVolumeTasks().get(e));
-		depends.add(getVolumeTasks().get(e));
-	});
-	
-	// Create the ArcticTask<Client, Resource>
-	ArcticTask<OSClientV3, Server> server = new ArcticTask<>(10, depends) {
-		
-		// Actual action of building the Server following OSClientV3 Library
-		public Server action() {
-			ServerCreateBuilder scb = Builders.server();
-			scb.name(ah.getName());
-			scb.flavor(ah.getFlavor());
-			for(ArcticTask<OSClientV3, Volume> vol : volumes) {
-				scb.blockDevice(Builders.blockDeviceMapping()
-						.uuid(vol.getResource().getId())
-						.bootIndex(0)
-						.destinationType(BDMDestType.VOLUME)
-						.sourceType(BDMSourceType.VOLUME)
-						.deleteOnTermination(true)
-						.build());
-			}
-			List<String> networkIds = new ArrayList<>();
-			for(ArcticTask<OSClientV3, Network> net : networks) {
-				Network netObj = net.getResource();
-				networkIds.add(netObj.getId());
-			}
-			scb.networks(networkIds);
-			Server s = OSFactory.clientFromToken(getClient().getToken()).compute().servers().boot(scb.build());
-			return s;
-		}
-			
-		// Use the OpenStackWaiter class to wait or error out the building of the Server
-		public void waitMethod(Server s) {
-			Waiter<OSClientV3, Server> serverWaiter = OpenStackWaiter.waitForInstanceAvailable();
-			try {
-				serverWaiter.waitUntilReady(OSFactory.clientFromToken(getClient().getToken()), ah.getRangeId(), s, 5000, 10);
-			} catch (ResourceTimeoutException e) {
-				e.printStackTrace();
-			} catch (ResourceErrorException e) {
-				e.printStackTrace();
-			}
-		}
-	};
-		
-	// Return the ArcticTask
-	return server;
+protected ArcticTask<OSClientV3, Server> buildHost(ShardRunningContext<OSClientV3> context, ArcticHostSO ah) {
+    List<ArcticTask<OSClientV3, Volume>>  volumes  = new ArrayList<>();
+    List<ArcticTask<OSClientV3, Network>> networks = new ArrayList<>();
+    List<ArcticTask<OSClientV3, ?>>       depends  = new ArrayList<>();
+
+    ah.getNetworks().forEach(name -> {
+        ArcticTask<OSClientV3, Network> task = getTypedTask(context.getNetworkTasks(), name);
+        networks.add(task);
+        depends.add(task);
+    });
+
+    ah.getVolumes().forEach(name -> {
+        ArcticTask<OSClientV3, Volume> task = getTypedTask(context.getVolumeTasks(), name);
+        volumes.add(task);
+        depends.add(task);
+    });
+
+    return new ArcticTask<>(10, depends) {
+
+        @Override
+        public Server action() {
+            String flavorId = ah.getExtraVariables().get("flavorId");
+
+            ServerCreateBuilder scb = Builders.server();
+            scb.name(ah.getName());
+            scb.flavor(flavorId);
+
+            for (ArcticTask<OSClientV3, Volume> vol : volumes) {
+                scb.blockDevice(Builders.blockDeviceMapping()
+                        .uuid(vol.getResource().getId())
+                        .bootIndex(0)
+                        .destinationType(BDMDestType.VOLUME)
+                        .sourceType(BDMSourceType.VOLUME)
+                        .deleteOnTermination(true)
+                        .build());
+            }
+
+            List<String> networkIds = new ArrayList<>();
+            for (ArcticTask<OSClientV3, Network> net : networks) {
+                networkIds.add(net.getResource().getId());
+            }
+            scb.networks(networkIds);
+
+            // Always create a fresh client from token — OSClientV3 is not thread-safe
+            return OSFactory.clientFromToken(context.getClient().getToken())
+                    .compute().servers().boot(scb.build());
+        }
+
+        @Override
+        public void waitMethod(Server s) {
+            Waiter<OSClientV3, Server> waiter = OpenStackWaiter.waitForInstanceAvailable();
+            try {
+                waiter.waitUntilReady(
+                    OSFactory.clientFromToken(context.getClient().getToken()),
+                    ah.getRangeId(), s, 5000, 10);
+            } catch (ResourceTimeoutException | ResourceErrorException e) {
+                e.printStackTrace();
+            }
+        }
+    };
 }
 ```
 
-As you can see, it can be difficult to understand, and make, an ArcticTask. But it's easier when you think about that <b>action</b> holds <b>JUST</b> making the item and <b>waitMethod</b> just holds the <b>while</b> loop to hold the thread until the resource is ready. The above waitMethod is fairly crazy, but looking into the <b>OpenStackWaiter</b> class, you'll see it's just a while loop method that checks every 10 seconds for 5000 seconds. (Lower timeInSeconds will error it out faster. Ensure you test this several times before attempting to merge a new provider in).
+**Thread safety:** Hypervisor clients are often not thread-safe. Always create a fresh client from the original token when inside `action()` or `waitMethod()`. Never share a client instance across threads.
+
+```java
+// Correct — fresh client per thread
+OSFactory.clientFromToken(context.getClient().getToken())
+
+// Wrong — sharing the session client directly across threads
+context.getClient()
+```
+
+---
+
+### Step 8: UI Field Registration (Optional)
+If your provider can supply dynamic field values (e.g. a list of available flavors or images to populate a dropdown in the UI), register a `ShardProviderUICreation` handler inside `pluginEnabled()`.
+
+```java
+@Override
+public void pluginEnabled() {
+    registerUICreation(new ObtainFlavors());
+    registerUICreation(new ObtainImages());
+}
+```
+
+Each UI creator implements `ShardProviderUICreation<Client, ReturnType>` and annotates its `returnResult` method with `@UIField` to declare which object type and key it belongs to.
+
+---
+
+## Packaging the Plugin
+The plugin must be packaged as an executable JAR with all its dependencies included (fat JAR / shaded JAR). The `shard.yml` must be at the root of the JAR, not inside a subdirectory.
+
+Place the finished JAR in the `providers/` folder next to the running ARCTIC application and restart. Shard will load it automatically on the next startup.

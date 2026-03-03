@@ -26,6 +26,7 @@ import com.rahman.arctic.shard.configuration.persistence.ShardProfile;
 import com.rahman.arctic.shard.configuration.yaml.ShardYamlReader;
 import com.rahman.arctic.shard.configuration.yaml.ShardYamlSettingSection;
 import com.rahman.arctic.shard.objects.ShardConfigurationReference;
+import com.rahman.arctic.shard.objects.ShardProviderReference;
 import com.rahman.arctic.shard.shards.ShardObjectType;
 import com.rahman.arctic.shard.shards.UIFieldReference;
 
@@ -107,21 +108,74 @@ public class ShardManager {
 		return UIFieldTools.thenApply(v -> references.stream().map(CompletableFuture::join).toList());
 	}
 	
+	private void closePlugin(ShardProviderTmpl<?> plugin) {
+		System.out.println("[" + plugin.getShardPluginName() + "] - Closing");
+		try {
+			plugin.pluginDisabled();
+		} catch (Exception e) {
+			System.err.println("[" + plugin.getShardPluginName() + "] - Error with ShardPlugins Disable method");
+		}
+		try {
+			plugin.getLoader().close();
+		} catch (IOException e) {
+			System.err.println("[" + plugin.getShardPluginName() + "] - Issue with closing plugin");
+		}
+	}
+
 	@PreDestroy
 	public void destroyPluginLoaders() {
 		for (ShardProviderTmpl<?> shardPlugin : getShards().values()) {
-			try {
-				System.out.println("[" + shardPlugin.getShardPluginName() + "] - Closing");
-				try {
-					shardPlugin.pluginDisabled();
-				} catch (Exception e) {
-					System.err.println("[" + shardPlugin.getShardPluginName() + "] - Error with ShardPlugins Disable method");
-				}
-				shardPlugin.getLoader().close();
-			} catch (IOException e) {
-				System.err.println("[" + shardPlugin.getShardPluginName() + "] Issue with closing plugin");
-			}
+			closePlugin(shardPlugin);
 		}
+	}
+
+	public List<ShardProviderReference> listProviders() {
+		return shards.values().stream()
+			.map(p -> new ShardProviderReference(
+				p.getDomain(),
+				p.isEnabled(),
+				p.isEnabled(),
+				p.isError(),
+				p.getErrorMessage(),
+				new ArrayList<>(),
+				new ArrayList<>()
+			))
+			.toList();
+	}
+
+	public void reloadAllProviders() {
+		for (ShardProviderTmpl<?> plugin : shards.values()) {
+			closePlugin(plugin);
+		}
+		shards.clear();
+		runningShardProfiles.clear();
+		checkForPotentialShardPlugins();
+	}
+
+	public void reloadProvider(String domain) {
+		ShardProviderTmpl<?> existing = shards.get(domain);
+		if (existing == null) throw new ResourceNotFoundException("Provider not found: " + domain);
+
+		String jarName = existing.getShardPluginName();
+		closePlugin(existing);
+		shards.remove(domain);
+		runningShardProfiles.clear();
+
+		File jar = new File("providers", jarName);
+		if (!jar.exists()) {
+			System.err.println("[" + domain + "] - JAR file no longer exists: " + jarName);
+			return;
+		}
+		enablePotentialShardPlugin(jar);
+	}
+
+	public void disableProvider(String domain) {
+		ShardProviderTmpl<?> existing = shards.get(domain);
+		if (existing == null) throw new ResourceNotFoundException("Provider not found: " + domain);
+
+		closePlugin(existing);
+		shards.remove(domain);
+		runningShardProfiles.clear();
 	}
 
 	public ShardManager(ShardConfigurationService service) {

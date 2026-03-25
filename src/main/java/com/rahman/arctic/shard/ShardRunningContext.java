@@ -148,4 +148,46 @@ public class ShardRunningContext<T> {
 		volumeTasks.put(av.getName(), provider.buildVolume(this, av));
 	}
 
+	@Getter
+	private Map<String, ArcticTask<T, ?>> destroyInstanceTasks = new HashMap<>();
+
+	@Getter
+	private Map<String, ArcticTask<T, ?>> destroyNetworkTasks = new HashMap<>();
+
+	@Getter
+	private Map<String, ArcticTask<T, ?>> destroySecurityGroupTasks = new HashMap<>();
+
+	@Getter
+	private Map<String, ArcticTask<T, ?>> destroySecurityGroupRuleTasks = new HashMap<>();
+
+	@Getter
+	private Map<String, ArcticTask<T, ?>> destroyRouterTasks = new HashMap<>();
+
+	@Getter
+	private Map<String, ArcticTask<T, ?>> destroyVolumeTasks = new HashMap<>();
+
+	public void destroyHost(ArcticHostSO ah) {
+		destroyInstanceTasks.put(ah.getName(), provider.destroyHost(this, ah));
+	}
+
+	public void destroyNetwork(ArcticNetworkSO an) {
+		destroyNetworkTasks.put(an.getName(), provider.destroyNetwork(this, an));
+	}
+
+	public void destroySecurityGroup(ArcticSecurityGroupSO asg) {
+		destroySecurityGroupTasks.put(asg.getName(), provider.destroySecurityGroup(this, asg));
+	}
+
+	public void destroySecurityGroupRule(ArcticSecurityGroupRuleSO asgr) {
+		destroySecurityGroupRuleTasks.put(asgr.getName(), provider.destroySecurityGroupRule(this, asgr));
+	}
+
+	public void destroyRouter(ArcticRouterSO ar) {
+		destroyRouterTasks.put(ar.getName(), provider.destroyRouter(this, ar));
+	}
+
+	public void destroyVolume(ArcticVolumeSO av) {
+		destroyVolumeTasks.put(av.getName(), provider.destroyVolume(this, av));
+	}
+
 }

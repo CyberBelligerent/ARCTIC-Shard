@@ -127,4 +127,16 @@ public abstract class ShardProviderTmpl<T> {
 	protected abstract ArcticTask<T, ?> buildRouter(ShardRunningContext<T> context, ArcticRouterSO ar);
 
 	protected abstract ArcticTask<T, ?> buildVolume(ShardRunningContext<T> context, ArcticVolumeSO av);
+
+	protected abstract ArcticTask<T, ?> destroyHost(ShardRunningContext<T> context, ArcticHostSO ah);
+
+	protected abstract ArcticTask<T, ?> destroyNetwork(ShardRunningContext<T> context, ArcticNetworkSO an);
+
+	protected abstract ArcticTask<T, ?> destroySecurityGroup(ShardRunningContext<T> context, ArcticSecurityGroupSO asg);
+
+	protected abstract ArcticTask<T, ?> destroySecurityGroupRule(ShardRunningContext<T> context, ArcticSecurityGroupRuleSO asgr);
+
+	protected abstract ArcticTask<T, ?> destroyRouter(ShardRunningContext<T> context, ArcticRouterSO ar);
+
+	protected abstract ArcticTask<T, ?> destroyVolume(ShardRunningContext<T> context, ArcticVolumeSO av);
 }

@@ -3,6 +3,7 @@ package com.rahman.arctic.shard.objects;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.function.Consumer;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -32,7 +33,10 @@ public abstract class ArcticTask<T, R> implements Runnable {
 	
 	@Getter @Setter
 	private T client;
-	
+
+	@Setter
+	private Consumer<R> onComplete;
+
 //	@Getter
 //	private boolean completed = false;
 	
@@ -101,6 +105,7 @@ public abstract class ArcticTask<T, R> implements Runnable {
 		R r = action();
 		waitMethod(r);
 		setResource(r);
+		if (onComplete != null) onComplete.accept(r);
 		notifyChildren();
 	}
 	

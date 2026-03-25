@@ -7,4 +7,5 @@ public class ArcticSecurityGroupSO {
 	private String name;
 	private String rangeId;
 	private String description;
+	private String providerId;
 }

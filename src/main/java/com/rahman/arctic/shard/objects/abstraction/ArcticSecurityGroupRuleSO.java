@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class ArcticSecurityGroupRuleSO {
 	private String name;
+	private String providerId;
 	private String description;
 	private String secGroup;
 	private String direction;

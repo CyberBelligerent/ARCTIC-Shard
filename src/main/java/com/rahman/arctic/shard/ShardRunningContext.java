@@ -83,7 +83,7 @@ public class ShardRunningContext<T> {
 				UIFieldReference ufr = new UIFieldReference();
 				ufr.setKey(e.getKey());
 				ufr.setLabel(e.getLabel());
-				ufr.setType(FieldType.SELECT);
+				ufr.setType(e.getType());
 				ufr.setReturnValue(result);
 				return ufr;
 			}).exceptionally(ex -> {
@@ -95,7 +95,7 @@ public class ShardRunningContext<T> {
 				UIFieldReference ufr = new UIFieldReference();
 				ufr.setKey(e.getKey());
 				ufr.setLabel(e.getLabel());
-				ufr.setType(FieldType.SELECT);
+				ufr.setType(e.getType());
 				ufr.setReturnValue("Error");
 				return ufr;
 			});

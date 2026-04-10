@@ -1,5 +1,7 @@
 package com.rahman.arctic.shard.objects.abstraction;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import lombok.Data;
@@ -10,4 +12,5 @@ public class ArcticRouterSO {
 	private String providerId;
 	private String rangeId;
 	private Set<String> connectedNetworkNames;
+	private Map<String, String> extraVariables = new HashMap<>();
 }

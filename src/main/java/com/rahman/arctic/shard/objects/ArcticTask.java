@@ -37,6 +37,9 @@ public abstract class ArcticTask<T, R> implements Runnable {
 	@Setter
 	private Consumer<R> onComplete;
 
+	@Setter
+	private Consumer<R> onPersist;
+
 //	@Getter
 //	private boolean completed = false;
 	
@@ -105,7 +108,8 @@ public abstract class ArcticTask<T, R> implements Runnable {
 		R r = action();
 		waitMethod(r);
 		setResource(r);
-		if (onComplete != null) onComplete.accept(r);
+		if (onComplete != null && r != null) onComplete.accept(r);
+		if (onPersist != null && r != null) onPersist.accept(r);
 		notifyChildren();
 	}
 	

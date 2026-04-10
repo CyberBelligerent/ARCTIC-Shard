@@ -25,7 +25,9 @@ public class CryptoHelper {
 	private final SecretKey generatedKey;
 
 	public CryptoHelper() {
-		generatedKey = new SecretKeySpec(loadOrGenerateKeyFromFile(), "AES");
+		byte[] keyBytes = loadOrGenerateKeyFromFile();
+		if (keyBytes == null) throw new IllegalStateException("[CryptoHelper] Failed to load or generate master key — check .arctic/master.key");
+		generatedKey = new SecretKeySpec(keyBytes, "AES");
 	}
 
 	public String decryptValue(String encryptedString) {
@@ -86,8 +88,8 @@ public class CryptoHelper {
 		try(BufferedReader reader = new BufferedReader(new FileReader(f))) {
 			String line = reader.readLine();
 			if (line == null || line.isBlank()) {
-			    // TODO: handle corrupt key file
-			    return null;
+				System.err.println("[CryptoHelper] master.key file exists but is empty or corrupt");
+				return null;
 			}
 			return Base64.getDecoder().decode(line);
 		} catch (FileNotFoundException e) {
@@ -111,7 +113,8 @@ public class CryptoHelper {
 			cipher.init(Cipher.DECRYPT_MODE, generatedKey, iv);
 			return cipher.doFinal(cipherText);
 		} catch (Exception e) {
-			e.printStackTrace();
+			System.err.println("[CryptoHelper] Decryption failed — stored value was likely encrypted with a different key. " +
+				"If the master.key file was regenerated, re-save affected provider settings. Error: " + e.getMessage());
 			return new byte[0];
 		}
 	}

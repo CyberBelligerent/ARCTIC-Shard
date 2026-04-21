@@ -93,7 +93,7 @@ public abstract class ShardProviderTmpl<T> {
 		
 		System.out.println("[" + getDomain() + "]" + " adding key for " + f.object().toString());
 		
-		obtainableFutures.get(f.object()).add(new UIFieldCreation<T>(f.key(), f.label(), f.type(), uiTool));
+		obtainableFutures.get(f.object()).add(new UIFieldCreation<T>(f.key(), f.label(), f.type(), f.keySource(), uiTool));
 	}
 	
 	@SuppressWarnings("unchecked")

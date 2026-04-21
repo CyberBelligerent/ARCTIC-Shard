@@ -84,6 +84,7 @@ public class ShardRunningContext<T> {
 				ufr.setKey(e.getKey());
 				ufr.setLabel(e.getLabel());
 				ufr.setType(e.getType());
+				ufr.setKeySource(e.getKeySource());
 				ufr.setReturnValue(result);
 				return ufr;
 			}).exceptionally(ex -> {
@@ -96,6 +97,7 @@ public class ShardRunningContext<T> {
 				ufr.setKey(e.getKey());
 				ufr.setLabel(e.getLabel());
 				ufr.setType(e.getType());
+				ufr.setKeySource(e.getKeySource());
 				ufr.setReturnValue("Error");
 				return ufr;
 			});

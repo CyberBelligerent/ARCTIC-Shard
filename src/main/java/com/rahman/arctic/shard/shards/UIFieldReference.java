@@ -7,5 +7,6 @@ public class UIFieldReference {
 	private String key;
 	private String label;
 	private FieldType type;
+	private String keySource;
 	private Object returnValue;
 }

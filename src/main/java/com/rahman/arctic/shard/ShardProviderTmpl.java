@@ -2,6 +2,7 @@ package com.rahman.arctic.shard;
 
 import java.lang.reflect.Method;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -139,4 +140,7 @@ public abstract class ShardProviderTmpl<T> {
 	protected abstract ArcticTask<T, ?> destroyRouter(ShardRunningContext<T> context, ArcticRouterSO ar);
 
 	protected abstract ArcticTask<T, ?> destroyVolume(ShardRunningContext<T> context, ArcticVolumeSO av);
+
+	protected abstract boolean templateExists(ShardRunningContext<T> context, String name);
+	protected abstract String uploadTemplate(ShardRunningContext<T> context, Path filePath, String name);
 }

@@ -21,6 +21,9 @@ public class ArcticHostSO {
 //	private Set<String> wantedIPs = new HashSet<>();
 	private Set<String> networks = new HashSet<>();
 	private Set<String> volumes = new HashSet<>();
-	
+
+	private Integer priorityOverride;
+	private Integer destroyPriorityOverride;
+
 	private Map<String, String> extraVariables = new HashMap<>();
 }

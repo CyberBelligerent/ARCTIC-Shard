@@ -130,6 +130,17 @@ public class ShardRunningContext<T> {
 		instanceTasks.put(ah.getName(), provider.buildHost(this, ah));
 	}
 
+	public List<ArcticHostSO> createHostCollection(ArcticHostSO ah) {
+		int count = Math.max(1, ah.getCount());
+		List<ArcticHostSO> instanceSos = new ArrayList<>(count);
+		for (int i = 0; i < count; i++) {
+			instanceSos.add(provider.cloneSoForInstance(ah, i));
+		}
+		Map<String, ArcticTask<T, ?>> tasks = provider.buildHostCollection(this, ah, instanceSos);
+		instanceTasks.putAll(tasks);
+		return instanceSos;
+	}
+
 	public void createNetwork(ArcticNetworkSO an) {
 		networkTasks.put(an.getName(), provider.buildNetwork(this, an));
 	}

@@ -5,8 +5,13 @@ import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+
+import com.rahman.arctic.shard.util.IpUtil;
 
 import com.rahman.arctic.shard.configuration.ShardProfileSettingsReference;
 import com.rahman.arctic.shard.configuration.yaml.ShardYamlReader;
@@ -73,6 +78,7 @@ public abstract class ShardProviderTmpl<T> {
 		Method m = Arrays.stream(uiTool.getClass().getMethods())
 		        .filter(method -> method.getName().equals("returnResult"))
 		        .filter(method -> method.getParameterCount() == 1)
+		        .filter(method -> !method.isBridge() && !method.isSynthetic())
 		        .findFirst()
 		        .orElse(null);
 
@@ -118,6 +124,61 @@ public abstract class ShardProviderTmpl<T> {
 	}
 
 	protected abstract ArcticTask<T, ?> buildHost(ShardRunningContext<T> context, ArcticHostSO ah);
+
+	/**
+	 * Default fan-out for a host collection: builds one task per pre-cloned instance SO. Plugins
+	 * with native bulk creation (e.g. OpenStack min/max_count) can override and ignore the cloned
+	 * SOs in favor of a single bulk API call.
+	 */
+	protected Map<String, ArcticTask<T, ?>> buildHostCollection(ShardRunningContext<T> context,
+			ArcticHostSO source, List<ArcticHostSO> instanceSos) {
+		Map<String, ArcticTask<T, ?>> tasks = new LinkedHashMap<>();
+		for (ArcticHostSO so : instanceSos) {
+			tasks.put(so.getName(), buildHost(context, so));
+		}
+		return tasks;
+	}
+
+	public ArcticHostSO cloneSoForInstance(ArcticHostSO source, int index) {
+		ArcticHostSO clone = new ArcticHostSO();
+		clone.setName(source.getName() + "-" + (index + 1));
+		clone.setRangeId(source.getRangeId());
+		clone.setOsType(source.getOsType());
+		clone.setNetworks(new HashSet<>(source.getNetworks()));
+		clone.setVolumes(new HashSet<>(source.getVolumes()));
+		clone.setCount(1);
+		clone.setCollectionId(source.getCollectionId());
+		clone.setPriorityOverride(source.getPriorityOverride());
+		clone.setDestroyPriorityOverride(source.getDestroyPriorityOverride());
+
+		Map<String, String> vars = new HashMap<>(source.getExtraVariables());
+		if (vars.containsKey("network_ips"))
+			vars.put("network_ips", incrementIpKvLines(vars.get("network_ips"), index));
+		if (vars.containsKey("external_network_ips"))
+			vars.put("external_network_ips", incrementIpKvLines(vars.get("external_network_ips"), index));
+		clone.setExtraVariables(vars);
+		return clone;
+	}
+
+	private static String incrementIpKvLines(String raw, int delta) {
+		if (raw == null || raw.isBlank() || delta == 0) return raw;
+		StringBuilder out = new StringBuilder();
+		for (String line : raw.split("\n")) {
+			String trimmed = line.trim();
+			if (trimmed.isEmpty()) continue;
+			int eq = trimmed.indexOf('=');
+			if (eq <= 0) { out.append(line).append('\n'); continue; }
+			String key = trimmed.substring(0, eq).trim();
+			String value = trimmed.substring(eq + 1).trim();
+			try {
+				value = IpUtil.increment(value, delta);
+			} catch (IllegalArgumentException ignored) {
+				// not a parseable IPv4 — leave the value alone
+			}
+			out.append(key).append('=').append(value).append('\n');
+		}
+		return out.toString().stripTrailing();
+	}
 
 	protected abstract ArcticTask<T, ?> buildNetwork(ShardRunningContext<T> context, ArcticNetworkSO an);
 

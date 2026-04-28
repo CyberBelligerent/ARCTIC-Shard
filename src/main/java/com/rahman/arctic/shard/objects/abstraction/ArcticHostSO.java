@@ -12,15 +12,13 @@ public class ArcticHostSO {
 	private String ip;
 	private String providerId;
 	private String name;
-//	private String defaultUser;
-//	private String defaultPassword;
-//	private String flavor;
 	private String rangeId;
-//	private String imageId;
 	private String osType;
-//	private Set<String> wantedIPs = new HashSet<>();
 	private Set<String> networks = new HashSet<>();
 	private Set<String> volumes = new HashSet<>();
+
+	private int count = 1;
+	private String collectionId;
 
 	private Integer priorityOverride;
 	private Integer destroyPriorityOverride;
